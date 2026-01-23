@@ -37,17 +37,32 @@ fun LoginScreen(
     onNavigateToDashboard: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
 
-    val isPreview = LocalInspectionMode.current
-
+    // Handle navigation as a side-effect in the smart composable
     LaunchedEffect(uiState.success) {
         uiState.success?.let {
             onNavigateToDashboard(it.username)
         }
     }
+
+    LoginScreenContent(
+        uiState = uiState,
+        onLoginClick = viewModel::login,
+        onClearError = viewModel::clearError
+    )
+}
+
+@Composable
+fun LoginScreenContent(
+    uiState: LoginUiState,
+    onLoginClick: (String, String) -> Unit,
+    onClearError: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    val isPreview = LocalInspectionMode.current
 
     val scale by if (isPreview) {
         remember { mutableStateOf(1f) }
@@ -103,7 +118,7 @@ fun LoginScreen(
 
             if (uiState.error != null) {
                 Text(
-                    text = uiState.error!!,
+                    text = uiState.error,
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 16.dp),
@@ -113,9 +128,9 @@ fun LoginScreen(
 
             OutlinedTextField(
                 value = username,
-                onValueChange = { 
+                onValueChange = {
                     username = it
-                    viewModel.clearError()
+                    onClearError()
                 },
                 label = { Text("Username") },
                 placeholder = { Text("Masukkan username Anda") },
@@ -134,9 +149,9 @@ fun LoginScreen(
 
             OutlinedTextField(
                 value = password,
-                onValueChange = { 
+                onValueChange = {
                     password = it
-                    viewModel.clearError()
+                    onClearError()
                 },
                 label = { Text("Password") },
                 placeholder = { Text("Masukkan password Anda") },
@@ -162,7 +177,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { viewModel.login(username, password) },
+                onClick = { onLoginClick(username, password) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -187,7 +202,7 @@ fun LoginScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -197,5 +212,41 @@ fun LoginScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Default State")
+@Composable
+fun LoginScreenPreview() {
+    Loanova_androidTheme {
+        LoginScreenContent(
+            uiState = LoginUiState(),
+            onLoginClick = { _, _ -> },
+            onClearError = { }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Loading State")
+@Composable
+fun LoginScreenLoadingPreview() {
+    Loanova_androidTheme {
+        LoginScreenContent(
+            uiState = LoginUiState(isLoading = true),
+            onLoginClick = { _, _ -> },
+            onClearError = { }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Error State")
+@Composable
+fun LoginScreenErrorPreview() {
+    Loanova_androidTheme {
+        LoginScreenContent(
+            uiState = LoginUiState(error = "Invalid username or password"),
+            onLoginClick = { _, _ -> },
+            onClearError = { }
+        )
     }
 }

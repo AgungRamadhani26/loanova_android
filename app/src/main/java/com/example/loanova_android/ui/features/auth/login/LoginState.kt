@@ -1,9 +1,9 @@
 package com.example.loanova_android.ui.features.auth.login
 
-data class LoginResult(val username: String)
+import com.example.loanova_android.domain.model.User
 
 data class LoginUiState(
     val isLoading: Boolean = false,
-    val success: LoginResult? = null,
+    val success: User? = null,
     val error: String? = null,
 )
