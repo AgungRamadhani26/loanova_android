@@ -1,9 +1,8 @@
-package com.example.loanova_android.presentation.home
+package com.example.loanova_android.ui.features.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -323,11 +322,3 @@ fun StepsSection() {
 
 data class FeatureItem(val title: String, val desc: String, val icon: ImageVector)
 data class PlafondData(val name: String, val desc: String, val amount: String, val interest: String)
-
-@Preview(showBackground = true)
-@Composable
-fun HomePreview() {
-    Loanova_androidTheme {
-        HomeScreen()
-    }
-}

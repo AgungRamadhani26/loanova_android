@@ -4,20 +4,8 @@
     android:viewportWidth="200"
     android:viewportHeight="200">
 
-    <!-- Background Solid Circle -->
     <path
         android:fillColor="#FF3B82F6"
-        android:pathData="M100,100m-100,0a100,100 0,1 1,200 0a100,100 0,1 1,-200 0" />
+        android:pathData="M0,0h200v200H0z"/>
 
-    <!-- Abstract L with Spark -->
-    <path
-        android:strokeWidth="18"
-        android:pathData="M75,60V130C75,135.523 79.4772,140 85,140H140"
-        android:strokeColor="#FFFFFF"
-        android:strokeLineCap="round"/>
-
-    <!-- Spark / Nova -->
-    <path
-        android:fillColor="#FBBF24"
-        android:pathData="M140,60L145,70L155,75L145,80L140,90L135,80L125,75L135,70L140,60Z"/>
 </vector>

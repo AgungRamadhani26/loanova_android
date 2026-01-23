@@ -1,7 +1,7 @@
 UI -> viewmodel -> LoginUseCase / RegisterUsecase / GetProducts -> Repository -> Datasource
 
 
-Depdeencies injection -> Koin / Hilt
+Depdeencies injection -> Hilt
 Appreference -> Data Persistence -> Local data storage (Mini)
 Sqlite -> Room Database
 Retrofit -> Untuk hit api
@@ -225,3 +225,4 @@ DI modules in core/di/ using Hilt or Koin
 - *Maintainability*: Predictable structure for team collaboration
 - *Reusability*: Shared components and logic
 - *Single Responsibility*: Each package has a clear purpose
+
