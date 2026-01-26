@@ -14,14 +14,28 @@ class TokenManager @Inject constructor(
 
     companion object {
         private const val KEY_ACCESS_TOKEN = "access_token"
+        // Refresh token diperlukan untuk proses logout (revoke token di backend)
+        // dan untuk refresh session jika access token expired (future dev)
+        private const val KEY_REFRESH_TOKEN = "refresh_token" 
         private const val KEY_USERNAME = "username"
     }
 
-    fun saveSession(accessToken: String, username: String) {
+    /**
+     * Menyimpan data sesi lengkap setelah login sukses.
+     * @param accessToken Token pendek (JWT) untuk akses API
+     * @param refreshToken Token panjang untuk perbarui sesi / logout
+     * @param username Identitas user yg login
+     */
+    fun saveSession(accessToken: String, refreshToken: String, username: String) {
         prefs.edit()
             .putString(KEY_ACCESS_TOKEN, accessToken)
+            .putString(KEY_REFRESH_TOKEN, refreshToken)
             .putString(KEY_USERNAME, username)
             .apply()
+    }
+
+    fun getRefreshToken(): String? {
+        return prefs.getString(KEY_REFRESH_TOKEN, null)
     }
 
     fun getAccessToken(): String? {
@@ -32,6 +46,11 @@ class TokenManager @Inject constructor(
         return prefs.getString(KEY_USERNAME, null)
     }
 
+    /**
+     * Menghapus semua data sesi dari HP.
+     * Dipanggil saat logout atau saat user memaksa keluar.
+     * Setelah ini dipanggil, isLoggedIn() akan return false.
+     */
     fun clearSession() {
         prefs.edit().clear().apply()
     }

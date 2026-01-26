@@ -25,6 +25,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getPublicPlafondsUseCase: GetPublicPlafondsUseCase,
+    private val logoutUseCase: com.example.loanova_android.domain.usecase.auth.LogoutUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -45,9 +46,33 @@ class HomeViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Menghandle aksi Logout dari UI.
+     * 
+     * FLOW:
+     * 1. Set loading state.
+     * 2. Panggil LogoutUseCase.
+     * 3. Collect result (kita tidak terlalu peduli result success/fail karena repo sudah force clear).
+     * 4. Update UI State:
+     *    - isLoading = false
+     *    - isLoggedIn = false (ini akan mentrigger navigasi di UI)
+     *    - username = null
+     */
     fun logout() {
-        tokenManager.clearSession()
-        checkLoginStatus()
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            logoutUseCase.execute().collect { result ->
+                // Whether success or fail, we clear session locally
+                 _uiState.update { 
+                     it.copy(
+                         isLoading = false,
+                         isLoggedIn = false,
+                         username = null
+                     ) 
+                 }
+                 // If success, just done.
+            }
+        }
     }
 
     private fun fetchPlafonds() {

@@ -9,6 +9,7 @@ package com.example.loanova_android.data.remote.api
 import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
 import com.example.loanova_android.data.model.dto.LoginRequest
+import com.example.loanova_android.data.model.dto.RefreshTokenRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -62,4 +63,21 @@ interface AuthApi {
     suspend fun login(
         @Body request: LoginRequest
     ): Response<ApiResponse<LoginResponse>>
+
+    /**
+     * Endpoint untuk Logout.
+     * 
+     * METHOD: POST /api/auth/logout
+     * HEADER: Authorization: Bearer <token>
+     * BODY: { "refreshToken": "..." }
+     * 
+     * KETENTUAN:
+     * - Wajib kirim Header Authorization (akses endpoint ini restricted)
+     * - Wajib kirim RefreshToken di body agar backend bisa blacklist
+     */
+    @POST("api/auth/logout")
+    suspend fun logout(
+        @retrofit2.http.Header("Authorization") token: String,
+        @Body request: RefreshTokenRequest
+    ): Response<ApiResponse<Void>>
 }

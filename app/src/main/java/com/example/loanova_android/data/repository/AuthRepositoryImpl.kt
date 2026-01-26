@@ -87,7 +87,11 @@ class AuthRepositoryImpl @Inject constructor(
                 )
                 // Save session
                 if (body.data.accessToken != null) {
-                    tokenManager.saveSession(body.data.accessToken, body.data.username ?: username)
+                    tokenManager.saveSession(
+                        body.data.accessToken, 
+                        body.data.refreshToken ?: "",
+                        body.data.username ?: username
+                    )
                 }
             } else {
                 val errorMessage = body?.message ?: response.message()
@@ -95,6 +99,47 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Implementasi Logout.
+     * 
+     * LOGIC:
+     * 1. Ambil AccessToken & RefreshToken dari local storage (TokenManager).
+     * 2. Kalau token ada, panggil API Logout agar backend blacklist token tsb.
+     * 3. APAPUN HASILNYA (Sukses/Gagal/Error Network), kita harus hapus sesi lokal.
+     *    Alasannya: Kalau user klik logout, mereka berharap keluar dari app.
+     *    Jika API fail (misal offline), user tetap harus bisa logout secara lokal.
+     * 
+     * @return Flow<Resource<Boolean>> - True jika proses selesai
+     */
+    override fun logout(): Flow<Resource<Boolean>> = flow {
+        emit(Resource.Loading())
+        try {
+            val accessToken = tokenManager.getAccessToken() ?: ""
+            val refreshToken = tokenManager.getRefreshToken() ?: ""
+            
+            if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
+                val response = remoteDataSource.logout(accessToken, refreshToken)
+                if (response.isSuccessful) {
+                     // Skenario Ideal: Server sukses blacklist token -> Hapus lokal
+                     tokenManager.clearSession()
+                     emit(Resource.Success(true))
+                } else {
+                     // Skenario Server Error (misal 500): Tetap hapus lokal demi keamanan/UX
+                     tokenManager.clearSession()
+                     emit(Resource.Error(response.message()))
+                }
+            } else {
+                 // Token sudah tidak ada (mungkin sudah terhapus): Anggap sukses logout
+                 tokenManager.clearSession()
+                 emit(Resource.Success(true))
+            }
+        } catch (e: Exception) {
+            // Skenario Network Error (Offline): Tetap paksa logout lokal
+            tokenManager.clearSession()
+            emit(Resource.Error(e.message ?: "Logout error"))
         }
     }.flowOn(Dispatchers.IO)
 }

@@ -9,6 +9,7 @@ package com.example.loanova_android.data.remote.datasource
 import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
 import com.example.loanova_android.data.model.dto.LoginRequest
+import com.example.loanova_android.data.model.dto.RefreshTokenRequest
 import com.example.loanova_android.data.remote.api.AuthApi
 import retrofit2.Response
 import javax.inject.Inject
@@ -66,5 +67,22 @@ class AuthRemoteDataSource @Inject constructor(
         // Direct delegation ke API - simple proxy
         // Logic tambahan bisa ditambahkan di sini jika diperlukan
         return authApi.login(request)
+    }
+
+    /**
+     * Mengirim request logout ke API.
+     * 
+     * DETAIL IMPLEMENTASI:
+     * - Menambahkan pretext "Bearer " ke token agar sesuai format Authorization Header standard.
+     * - Membungkus refreshToken ke dalam RefreshTokenRequest DTO.
+     * 
+     * @param token AccessToken (Raw string: "eyJ...")
+     * @param refreshToken RefreshToken
+     */
+    suspend fun logout(token: String, refreshToken: String): Response<ApiResponse<Void>> {
+        return authApi.logout(
+             token = "Bearer $token",
+             request = RefreshTokenRequest(refreshToken)
+        )
     }
 }

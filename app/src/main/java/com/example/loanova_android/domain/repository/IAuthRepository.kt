@@ -53,4 +53,5 @@ interface IAuthRepository {
      * @return Result<User> - Domain model User jika sukses, Exception jika gagal
      */
     fun login(username: String, password: String, fcmToken: String? = null): Flow<Resource<User>>
+    fun logout(): Flow<Resource<Boolean>>
 }

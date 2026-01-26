@@ -41,6 +41,13 @@ fun HomeScreen(
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Home
 
+    // Reset tab to Home when logged out
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (!uiState.isLoggedIn && selectedTab != 0) {
+            selectedTab = 0
+        }
+    }
+
     Scaffold(
         topBar = { HomeHeader(isLoggedIn = uiState.isLoggedIn, username = uiState.username) },
         bottomBar = {
@@ -53,7 +60,6 @@ fun HomeScreen(
                         // Restricted tabs
                         if (uiState.isLoggedIn) {
                             selectedTab = index
-                            // TODO: Handle navigation to Pinjaman/Notif/Profile
                         } else {
                             onNavigateToLogin()
                         }
@@ -64,17 +70,95 @@ fun HomeScreen(
         containerColor = LoanovaBackground
     ) { padding ->
         // Content based on tab
-        if (selectedTab == 0) {
-            HomeContent(
+        when (selectedTab) {
+            0 -> HomeContent(
                 padding = padding,
                 uiState = uiState,
                 onNavigateToLogin = onNavigateToLogin
             )
-        } else {
-            // Placeholder for other tabs
-            Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
+            3 -> ProfileContent(
+                padding = padding,
+                username = uiState.username,
+                onLogout = { 
+                    viewModel.logout() 
+                    // Navigation back to home is handled by LaunchedEffect observing isLoggedIn
+                }
+            )
+            else -> Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Fitur Belum Tersedia / Placeholder")
             }
+        }
+    }
+}
+
+/**
+ * Halaman Konten Profil.
+ * Ditampilkan saat user memilih tab Profil.
+ * 
+ * FITUR:
+ * - Menampilkan Avatar sederhana (Inisial User).
+ * - Menampilkan Username dan Role.
+ * - Tombol Logout yang memanggil viewModel.logout().
+ * 
+ * @param username Username user yang sedang login.
+ * @param onLogout Callback saat tombol logout ditekan.
+ */
+@Composable
+fun ProfileContent(
+    padding: PaddingValues,
+    username: String?,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Avatar
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(LoanovaLightBlue),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = username?.take(1)?.uppercase() ?: "?",
+                style = MaterialTheme.typography.displayMedium,
+                color = LoanovaBlue,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = username ?: "User",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Text(
+            text = "Customer",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+        
+        Spacer(modifier = Modifier.height(48.dp))
+        
+        Button(
+            onClick = onLogout,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.ExitToApp, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Keluar (Logout)")
         }
     }
 }
