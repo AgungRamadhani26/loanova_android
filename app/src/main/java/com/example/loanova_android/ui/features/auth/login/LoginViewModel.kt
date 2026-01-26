@@ -1,5 +1,10 @@
 package com.example.loanova_android.ui.features.auth.login
 
+// ============================================================================
+// LAYER: UI (Presentation Layer)
+// PATTERN: MVVM (Model-View-ViewModel)
+// ============================================================================
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.loanova_android.domain.usecase.auth.LoginUseCase
@@ -8,34 +13,135 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resumeWithException
 import javax.inject.Inject
 
+/**
+ * LoginViewModel - ViewModel untuk mengelola state dan logic pada halaman Login.
+ * 
+ * PERAN DALAM MVVM:
+ * - ViewModel bertindak sebagai penghubung antara View (LoginScreen) dan Model (Domain Layer)
+ * - Menyimpan dan mengelola UI state yang survive configuration changes (rotasi layar)
+ * - Tidak memiliki referensi langsung ke View (Composable), hanya expose state via StateFlow
+ * 
+ * DEPENDENCY INJECTION:
+ * - @HiltViewModel: Anotasi dari Hilt untuk membuat ViewModel injectable
+ * - @Inject constructor: Hilt akan menyediakan LoginUseCase secara otomatis
+ * 
+ * CLEAN ARCHITECTURE:
+ * - ViewModel hanya bergantung pada UseCase (Domain Layer), bukan Repository langsung
+ * - Ini mengikuti Dependency Rule: UI Layer -> Domain Layer
+ * 
+ * @param loginUseCase UseCase yang menangani business logic untuk proses login
+ */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase
+    private val loginUseCase: LoginUseCase // Dependency dari Domain Layer
 ) : ViewModel() {
 
+    // ========================================================================
+    // STATE MANAGEMENT dengan StateFlow
+    // ========================================================================
+    
+    /**
+     * _uiState adalah MutableStateFlow yang menyimpan state internal.
+     * - MutableStateFlow: Flow yang dapat diubah nilainya (mutable)
+     * - Private: Hanya ViewModel yang bisa mengubah state
+     * - Hot stream: Selalu memiliki nilai terbaru dan emit ke semua collectors
+     */
     private val _uiState = MutableStateFlow(LoginUiState())
+    
+    /**
+     * uiState adalah versi read-only dari _uiState yang di-expose ke UI.
+     * - asStateFlow(): Mengkonversi MutableStateFlow menjadi read-only StateFlow
+     * - UI (LoginScreen) hanya bisa membaca, tidak bisa mengubah state langsung
+     * - Ini mengimplementasikan prinsip Unidirectional Data Flow (UDF)
+     */
     val uiState = _uiState.asStateFlow()
 
+    // ========================================================================
+    // LOGIN FUNCTION
+    // ========================================================================
+    
+    /**
+     * Fungsi untuk melakukan proses login.
+     * 
+     * FLOW EKSEKUSI:
+     * 1. Validasi input (username & password tidak boleh kosong)
+     * 2. Set loading state = true
+     * 3. Panggil LoginUseCase untuk eksekusi business logic
+     * 4. Handle hasil (success atau failure)
+     * 5. Update UI state sesuai hasil
+     * 
+     * @param username Username yang diinput user
+     * @param password Password yang diinput user
+     */
     fun login(username: String, password: String) {
+        // STEP 1: Validasi input di UI layer (fail fast principle)
+        // Validasi ini untuk UX yang cepat, validasi business di Domain layer
         if (username.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(error = "Username dan password tidak boleh kosong") }
-            return
+            return // Early return jika validasi gagal
         }
 
+        // STEP 2-5: Eksekusi login dalam coroutine
+        // viewModelScope: CoroutineScope yang terikat lifecycle ViewModel
+        // Jika ViewModel di-destroy, semua coroutine otomatis di-cancel
         viewModelScope.launch {
+            // STEP 2: Set loading state, clear previous error
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val result = loginUseCase.execute(username, password)
             
+            // STEP 2.5: Get FCM Token
+            var fcmToken: String? = null
+            try {
+                fcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+                android.util.Log.d("LoginViewModel", "FCM Token Fetched: $fcmToken")
+            } catch (e: Exception) {
+                android.util.Log.e("LoginViewModel", "Failed to fetch FCM token", e)
+                e.printStackTrace()
+            }
+
+            // STEP 3: Panggil UseCase - ini akan memanggil Repository -> DataSource -> API
+            val result = loginUseCase.execute(username, password, fcmToken)
+            
+            // STEP 4 & 5: Handle hasil dengan Result wrapper
+            // onSuccess: Dipanggil jika Result.success
             result.onSuccess { user ->
+                // Update state dengan user data, UI akan react dan navigate ke Dashboard
                 _uiState.update { it.copy(isLoading = false, success = user) }
             }.onFailure { error ->
+                // onFailure: Dipanggil jika Result.failure
+                // Update state dengan error message untuk ditampilkan di UI
                 _uiState.update { it.copy(isLoading = false, error = error.message ?: "Login gagal") }
             }
         }
     }
 
+    // Helper extension to await Firebase task
+    private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T {
+        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    cont.resume(task.result) { cancellation -> 
+                         // Handle cancellation if needed, or leave empty 
+                    }
+                } else {
+                    cont.resumeWithException(task.exception ?: Exception("Unknown task exception"))
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // UTILITY FUNCTIONS
+    // ========================================================================
+    
+    /**
+     * Fungsi untuk menghapus error message dari state.
+     * Dipanggil ketika user mulai mengetik di text field.
+     * Memberikan feedback visual bahwa error sudah di-acknowledge.
+     */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

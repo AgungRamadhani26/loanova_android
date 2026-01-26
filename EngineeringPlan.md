@@ -216,7 +216,7 @@ Shared UI components in ui/components/ organized by type (buttons, cards, inputs
 Centralized navigation logic in core/navigation/ using Compose Navigation
 
 ### 7. *Dependency Injection*
-DI modules in core/di/ using Hilt or Koin
+DI modules in core/di/ using Hilt
 
 ## Benefits
 

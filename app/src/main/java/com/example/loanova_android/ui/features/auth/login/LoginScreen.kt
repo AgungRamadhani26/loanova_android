@@ -1,5 +1,11 @@
 package com.example.loanova_android.ui.features.auth.login
 
+// ============================================================================
+// LAYER: UI (Presentation Layer)
+// PATTERN: Jetpack Compose with MVVM
+// RESPONSIBILITY: Login screen UI dengan Smart/Dumb composable pattern
+// ============================================================================
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -31,24 +37,58 @@ import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.Loanova_androidTheme
 
+// ============================================================================
+// SMART COMPOSABLE (Container/Screen)
+// - Memiliki akses ke ViewModel
+// - Handle side-effects (navigation, etc.)
+// - Mendelegasikan rendering ke Dumb Composable
+// ============================================================================
+
+/**
+ * LoginScreen - Smart Composable untuk halaman Login.
+ * 
+ * APA ITU SMART COMPOSABLE?
+ * - Composable yang "aware" terhadap business logic dan state management
+ * - Memiliki akses ke ViewModel
+ * - Handle side-effects (navigation, analytics, etc.)
+ * - Tidak/minimal memiliki UI code langsung
+ * 
+ * PATTERN: SCREEN COMPOSABLE
+ * - Entry point untuk sebuah feature/screen
+ * - Biasanya menerima ViewModel dan navigation callbacks
+ * - Mendelegasikan UI rendering ke Content composable
+ * 
+ * @param viewModel ViewModel untuk login logic, di-inject oleh Hilt
+ * @param onNavigateToDashboard Callback untuk navigasi ke Dashboard setelah login sukses
+ */
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = hiltViewModel(),
-    onNavigateToDashboard: (String) -> Unit
+    viewModel: LoginViewModel = hiltViewModel(), // Hilt menyediakan ViewModel
+    onNavigateToDashboard: (String) -> Unit      // Callback dari Navigation
 ) {
+    // Collect state dari ViewModel sebagai Compose State
+    // collectAsState() membuat UI re-compose ketika state berubah
     val uiState by viewModel.uiState.collectAsState()
 
-    // Handle navigation as a side-effect in the smart composable
+    // ========================================================================
+    // SIDE-EFFECT: Navigation setelah login sukses
+    // ========================================================================
+    // LaunchedEffect: Menjalankan side-effect ketika key berubah
+    // Key = uiState.success: Effect dijalankan ketika success berubah
     LaunchedEffect(uiState.success) {
         uiState.success?.let {
+            // Jika success tidak null, navigasi ke Dashboard
+            // it.username: mengambil username dari User object
             onNavigateToDashboard(it.username)
         }
     }
 
+    // Delegate UI rendering ke Dumb Composable
+    // Passing state dan callbacks sebagai parameter
     LoginScreenContent(
-        uiState = uiState,
-        onLoginClick = viewModel::login,
-        onClearError = viewModel::clearError
+        uiState = uiState,                    // Read-only state
+        onLoginClick = viewModel::login,      // Method reference ke ViewModel
+        onClearError = viewModel::clearError  // Method reference ke ViewModel
     )
 }
 

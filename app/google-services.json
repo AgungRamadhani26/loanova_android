@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "42854164323",
+    "project_id": "loanova-android",
+    "storage_bucket": "loanova-android.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42854164323:android:98214984f56a9807b49556",
+        "android_client_info": {
+          "package_name": "com.example.loanova_android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnOP0mJy_jFPE6dbDsvjl7OcBDV_qvwP4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
