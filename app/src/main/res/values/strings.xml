@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">loanova_android</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Loanova</string>
+    <string name="login_subtitle">Solusi Finansial Masa Depan</string>
+    <string name="username_label">Username</string>
+    <string name="username_placeholder">Masukkan username Anda</string>
+    <string name="password_label">Password</string>
+    <string name="password_placeholder">Masukkan password Anda</string>
+    <string name="show_password">Tampilkan password</string>
+    <string name="hide_password">Sembunyikan password</string>
+    <string name="login_button">MASUK</string>
+    <string name="no_account">Belum punya akun?</string>
+    <string name="register_button">Daftar Sekarang</string>
 </resources>

@@ -7,11 +7,17 @@ package com.example.loanova_android.data.repository
 // ============================================================================
 
 import com.example.loanova_android.data.model.dto.LoginRequest
-import com.example.loanova_android.data.model.dto.LoginResponse
+
 import com.example.loanova_android.data.remote.datasource.AuthRemoteDataSource
 import com.example.loanova_android.domain.model.User
 import com.example.loanova_android.domain.repository.IAuthRepository
 import com.google.gson.Gson
+import com.example.loanova_android.core.common.Resource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+
 import javax.inject.Inject
 
 /**
@@ -35,7 +41,8 @@ import javax.inject.Inject
  */
 class AuthRepositoryImpl @Inject constructor(
     private val remoteDataSource: AuthRemoteDataSource, // Abstraksi untuk network call
-    private val gson: Gson // Untuk deserialize error body
+    private val gson: Gson, // Untuk deserialize error body
+    private val tokenManager: com.example.loanova_android.data.local.TokenManager // Session Manager
 ) : IAuthRepository {
 
     /**
@@ -59,62 +66,35 @@ class AuthRepositoryImpl @Inject constructor(
      * @param fcmToken FCM Token (Optional)
      * @return Result<User> - Success dengan User domain model, atau Failure dengan Exception
      */
-    override suspend fun login(username: String, password: String, fcmToken: String?): Result<User> {
-        return try {
-            // STEP 1 & 2: Buat request DTO dan panggil DataSource
-            // LoginRequest adalah DTO yang akan di-serialize ke JSON
+    override fun login(username: String, password: String, fcmToken: String?): Flow<Resource<User>> = flow {
+        emit(Resource.Loading())
+        try {
             val response = remoteDataSource.login(LoginRequest(username, password, fcmToken))
-            
-            // STEP 3: Handle response berdasarkan HTTP status
-            if (response.isSuccessful) {
-                // HTTP 2xx - Response sukses secara network
-                val body = response.body()
-                
-                // Cek apakah body ada dan success flag = true
-                if (body != null && body.success && body.data != null) {
-                    // STEP 4: Mapping DTO -> Domain Model
-                    // LoginResponseData (DTO) -> User (Domain)
-                    // Perhatikan null safety dengan Elvis operator (?:)
-                    Result.success(
+            val body = response.body()
+
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                emit(
+                    Resource.Success(
                         User(
-                            username = body.data.username ?: username, // Fallback ke input jika null
-                            roles = body.data.roles ?: emptyList(),    // Default empty list
+                            username = body.data.username ?: username,
+                            roles = body.data.roles ?: emptyList(),
                             permissions = body.data.permissions ?: emptyList(),
                             accessToken = body.data.accessToken ?: "",
-                            refreshToken = body.data.refreshToken ?: ""
+                            refreshToken = body.data.refreshToken ?: "",
+                            fcmToken = fcmToken
                         )
                     )
-                } else {
-                    // Body indicate failure (success=false atau body null)
-                    // Ini bisa terjadi jika API design return 200 tapi dengan error message
-                    Result.failure(Exception(body?.message ?: "Gagal login"))
+                )
+                // Save session
+                if (body.data.accessToken != null) {
+                    tokenManager.saveSession(body.data.accessToken, body.data.username ?: username)
                 }
             } else {
-                // HTTP 4xx/5xx - Error response
-                // Parse error body untuk mendapatkan message yang lebih informatif
-                val errorBody = response.errorBody()?.string()
-                val errorResponse = gson.fromJson(errorBody, LoginResponse::class.java)
-                
-                // Extract error message dengan priority:
-                // 1. Validation errors (field-level)
-                // 2. General error message
-                // 3. Default fallback message
-                val errorMessage = when {
-                    // Jika ada validation errors, gabungkan semua
-                    errorResponse?.data?.errors != null -> {
-                        errorResponse.data.errors.values.joinToString(", ")
-                    }
-                    // Jika ada message umum
-                    errorResponse?.message != null -> errorResponse.message
-                    // Default fallback
-                    else -> "Username atau password salah"
-                }
-                Result.failure(Exception(errorMessage))
+                val errorMessage = body?.message ?: response.message()
+                emit(Resource.Error(errorMessage))
             }
         } catch (e: Exception) {
-            // Catch-all untuk network errors, parsing errors, dll
-            // Log error di sini jika menggunakan logging framework
-            Result.failure(e)
+            emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }

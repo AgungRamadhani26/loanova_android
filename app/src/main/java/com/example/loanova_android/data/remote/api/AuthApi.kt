@@ -6,8 +6,9 @@ package com.example.loanova_android.data.remote.api
 // RESPONSIBILITY: Definisi endpoint HTTP untuk komunikasi dengan backend
 // ============================================================================
 
-import com.example.loanova_android.data.model.dto.LoginRequest
+import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
+import com.example.loanova_android.data.model.dto.LoginRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -29,7 +30,7 @@ import retrofit2.http.POST
  * 
  * KONVERSI JSON:
  * - Request: LoginRequest -> JSON (via GsonConverterFactory)
- * - Response: JSON -> LoginResponse (via GsonConverterFactory)
+ * - Response: JSON -> ApiResponse<Data> (via GsonConverterFactory)
  */
 interface AuthApi {
     
@@ -45,10 +46,10 @@ interface AuthApi {
      * @param request LoginRequest DTO yang berisi username & password
      *                @Body annotation: Object akan di-serialize ke JSON dan dikirim di request body
      * 
-     * @return Response<LoginResponse>
+     * @return Response<ApiResponse<LoginResponse>>
      *         - Response wrapper dari Retrofit untuk akses HTTP metadata
      *         - .isSuccessful: true jika HTTP 2xx
-     *         - .body(): LoginResponse jika sukses
+     *         - .body(): ApiResponse jika sukses
      *         - .errorBody(): Error body jika HTTP 4xx/5xx
      *         - .code(): HTTP status code
      * 
@@ -60,5 +61,5 @@ interface AuthApi {
     @POST("api/auth/login")
     suspend fun login(
         @Body request: LoginRequest
-    ): Response<LoginResponse>
+    ): Response<ApiResponse<LoginResponse>>
 }

@@ -14,7 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.loanova_android.ui.features.auth.login.LoginScreen
 import com.example.loanova_android.ui.features.home.HomeScreen
-import com.example.loanova_android.ui.features.home.DashboardScreen
+import com.example.loanova_android.ui.features.dashboard.DashboardScreen
 
 /**
  * AppNavigation - Composable untuk setup navigation graph aplikasi.

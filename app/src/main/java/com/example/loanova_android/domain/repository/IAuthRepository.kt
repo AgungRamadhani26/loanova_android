@@ -8,6 +8,9 @@ package com.example.loanova_android.domain.repository
 
 import com.example.loanova_android.domain.model.User
 
+import kotlinx.coroutines.flow.Flow
+import com.example.loanova_android.core.common.Resource
+
 /**
  * IAuthRepository - Interface Repository untuk operasi autentikasi.
  * 
@@ -49,5 +52,5 @@ interface IAuthRepository {
      * @param password Password untuk autentikasi
      * @return Result<User> - Domain model User jika sukses, Exception jika gagal
      */
-    suspend fun login(username: String, password: String, fcmToken: String? = null): Result<User>
+    fun login(username: String, password: String, fcmToken: String? = null): Flow<Resource<User>>
 }

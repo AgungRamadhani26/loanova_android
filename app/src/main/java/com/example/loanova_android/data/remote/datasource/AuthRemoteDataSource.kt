@@ -6,8 +6,9 @@ package com.example.loanova_android.data.remote.datasource
 // RESPONSIBILITY: Abstraksi untuk operasi network (remote data source)
 // ============================================================================
 
-import com.example.loanova_android.data.model.dto.LoginRequest
+import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
+import com.example.loanova_android.data.model.dto.LoginRequest
 import com.example.loanova_android.data.remote.api.AuthApi
 import retrofit2.Response
 import javax.inject.Inject
@@ -59,9 +60,9 @@ class AuthRemoteDataSource @Inject constructor(
      * - Response caching
      * 
      * @param request LoginRequest berisi credentials user
-     * @return Response<LoginResponse> raw response dari API
+     * @return Response<ApiResponse<LoginResponse>> raw response dari API
      */
-    suspend fun login(request: LoginRequest): Response<LoginResponse> {
+    suspend fun login(request: LoginRequest): Response<ApiResponse<LoginResponse>> {
         // Direct delegation ke API - simple proxy
         // Logic tambahan bisa ditambahkan di sini jika diperlukan
         return authApi.login(request)

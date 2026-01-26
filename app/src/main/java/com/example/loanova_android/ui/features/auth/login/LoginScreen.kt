@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -143,13 +144,13 @@ fun LoginScreenContent(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Loanova",
+                text = stringResource(R.string.login_title),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = LoanovaBlue
             )
             Text(
-                text = "Solusi Finansial Masa Depan",
+                text = stringResource(R.string.login_subtitle),
                 fontSize = 14.sp,
                 color = Color.Gray.copy(alpha = 0.8f)
             )
@@ -172,8 +173,8 @@ fun LoginScreenContent(
                     username = it
                     onClearError()
                 },
-                label = { Text("Username") },
-                placeholder = { Text("Masukkan username Anda") },
+                label = { Text(stringResource(R.string.username_label)) },
+                placeholder = { Text(stringResource(R.string.username_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -193,14 +194,15 @@ fun LoginScreenContent(
                     password = it
                     onClearError()
                 },
-                label = { Text("Password") },
-                placeholder = { Text("Masukkan password Anda") },
+                label = { Text(stringResource(R.string.password_label)) },
+                placeholder = { Text(stringResource(R.string.password_placeholder)) },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 trailingIcon = {
                     val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val description = if (passwordVisible) stringResource(R.string.hide_password) else stringResource(R.string.show_password)
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = if (passwordVisible) "Sembunyikan password" else "Tampilkan password")
+                        Icon(imageVector = image, contentDescription = description)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -233,7 +235,7 @@ fun LoginScreenContent(
                     )
                 } else {
                     Text(
-                        text = "MASUK",
+                        text = stringResource(R.string.login_button),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -246,9 +248,9 @@ fun LoginScreenContent(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Belum punya akun?", color = Color.Gray, fontSize = 14.sp)
+                Text(text = stringResource(R.string.no_account), color = Color.Gray, fontSize = 14.sp)
                 TextButton(onClick = { /* TODO: Register */ }) {
-                    Text(text = "Daftar Sekarang", color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                    Text(text = stringResource(R.string.register_button), color = LoanovaBlue, fontWeight = FontWeight.Bold)
                 }
             }
         }

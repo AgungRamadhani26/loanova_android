@@ -1,4 +1,4 @@
-package com.example.loanova_android.ui.features.home
+package com.example.loanova_android.ui.features.dashboard
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

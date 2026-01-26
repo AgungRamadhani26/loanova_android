@@ -103,20 +103,23 @@ class LoginViewModel @Inject constructor(
             }
 
             // STEP 3: Panggil UseCase - ini akan memanggil Repository -> DataSource -> API
-            val result = loginUseCase.execute(username, password, fcmToken)
-            
-            // STEP 4 & 5: Handle hasil dengan Result wrapper
-            // onSuccess: Dipanggil jika Result.success
-            result.onSuccess { user ->
-                // Update state dengan user data, UI akan react dan navigate ke Dashboard
-                _uiState.update { it.copy(isLoading = false, success = user) }
-            }.onFailure { error ->
-                // onFailure: Dipanggil jika Result.failure
-                // Update state dengan error message untuk ditampilkan di UI
-                _uiState.update { it.copy(isLoading = false, error = error.message ?: "Login gagal") }
+            // Observe Flow dari UseCase
+            loginUseCase.execute(username, password, fcmToken).collect { resource ->
+                when (resource) {
+                    is com.example.loanova_android.core.common.Resource.Loading -> {
+                        _uiState.update { it.copy(isLoading = true, error = null) }
+                    }
+                    is com.example.loanova_android.core.common.Resource.Success -> {
+                        _uiState.update { it.copy(isLoading = false, success = resource.data) }
+                    }
+                    is com.example.loanova_android.core.common.Resource.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = resource.message ?: "Login gagal") }
+                    }
+                }
             }
         }
     }
+
 
     // Helper extension to await Firebase task
     private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T {

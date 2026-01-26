@@ -14,9 +14,8 @@ package com.example.loanova_android.domain.model
  * - Domain Model hanya berisi data yang RELEVAN untuk business logic
  * 
  * PERBEDAAN DENGAN DTO dan ENTITY:
- * ```
  * DTO (Data Layer)      ->  User (Domain)    ->  UI State (UI Layer)
- * LoginResponseData.kt      User.kt              LoginUiState.kt
+ * LoginResponse.kt        User.kt              LoginUiState.kt
  * - Raw API response        - Clean business     - UI specific
  * - Snake_case fields         entity             - Display formatting
  * - Nullable fields         - Required fields    - Loading states
@@ -43,5 +42,6 @@ data class User(
     val roles: List<String>,    // Role-based access control
     val permissions: List<String>, // Fine-grained permissions
     val accessToken: String,    // Short-lived token untuk API calls
-    val refreshToken: String    // Long-lived token untuk refresh
+    val refreshToken: String,   // Long-lived token untuk refresh
+    val fcmToken: String? = null // Firebase Cloud Messaging Token
 )

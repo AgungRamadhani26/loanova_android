@@ -7,6 +7,8 @@ package com.example.loanova_android.domain.usecase.auth
 
 import com.example.loanova_android.domain.model.User
 import com.example.loanova_android.domain.repository.IAuthRepository
+import kotlinx.coroutines.flow.Flow
+import com.example.loanova_android.core.common.Resource
 import javax.inject.Inject
 
 /**
@@ -60,10 +62,8 @@ class LoginUseCase @Inject constructor(
      * @param fcmToken FCM Token (Optional)
      * @return Result<User> - Success dengan User object, atau Failure dengan exception
      */
-    suspend fun execute(username: String, password: String, fcmToken: String? = null): Result<User> {
+    fun execute(username: String, password: String, fcmToken: String? = null): Flow<Resource<User>> {
         // Delegasikan ke Repository - UseCase ini hanya orchestrator
-        // Business logic lebih kompleks bisa ditambahkan di sini jika diperlukan
-        // Contoh: validasi format email, password strength check, dll.
         return repository.login(username, password, fcmToken)
     }
 }

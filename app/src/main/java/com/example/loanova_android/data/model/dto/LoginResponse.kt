@@ -3,19 +3,6 @@ package com.example.loanova_android.data.model.dto
 import com.google.gson.annotations.SerializedName
 
 data class LoginResponse(
-    @SerializedName("success")
-    val success: Boolean,
-    @SerializedName("message")
-    val message: String,
-    @SerializedName("code")
-    val code: Int,
-    @SerializedName("timestamp")
-    val timestamp: String,
-    @SerializedName("data")
-    val data: LoginData? = null
-)
-
-data class LoginData(
     @SerializedName("accessToken")
     val accessToken: String? = null,
     @SerializedName("refreshToken")
