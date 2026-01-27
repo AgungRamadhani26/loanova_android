@@ -64,6 +64,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun LoginPreview() {
     Loanova_androidTheme {
-        LoginScreen(onNavigateToDashboard = { _ -> })
+        LoginScreen(onNavigateToDashboard = { _ -> }, onNavigateToRegister = {})
     }
 }

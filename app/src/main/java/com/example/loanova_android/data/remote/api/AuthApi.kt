@@ -10,6 +10,8 @@ import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
 import com.example.loanova_android.data.model.dto.LoginRequest
 import com.example.loanova_android.data.model.dto.RefreshTokenRequest
+import com.example.loanova_android.data.model.dto.RegisterRequest
+import com.example.loanova_android.data.model.dto.RegisterResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -59,6 +61,11 @@ interface AuthApi {
      * - Automatically execute in IO dispatcher
      * - No need for enqueue/await pattern
      */
+    @POST("api/auth/register")
+    suspend fun register(
+        @Body request: RegisterRequest
+    ): Response<ApiResponse<RegisterResponse>>
+
     @POST("api/auth/login")
     suspend fun login(
         @Body request: LoginRequest
@@ -80,4 +87,15 @@ interface AuthApi {
         @retrofit2.http.Header("Authorization") token: String,
         @Body request: RefreshTokenRequest
     ): Response<ApiResponse<Void>>
+
+    /**
+     * Endpoint untuk Refresh Token.
+     * Digunakan oleh TokenAuthenticator saat access token expired (401).
+     *
+     * @return Call<ApiResponse<LoginResponse>> (Synchronous Call untuk Authenticator)
+     */
+    @POST("api/auth/refresh")
+    fun refreshToken(
+        @Body request: RefreshTokenRequest
+    ): retrofit2.Call<ApiResponse<LoginResponse>>
 }

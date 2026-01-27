@@ -45,4 +45,5 @@ data class LoginUiState(
     val isLoading: Boolean = false,  // Flag untuk menampilkan loading spinner
     val success: User? = null,        // Null = belum login, User = login berhasil
     val error: String? = null,        // Null = tidak ada error, String = pesan error
+    val fieldErrors: Map<String, String>? = null // Validation errors (key: field, value: message)
 )

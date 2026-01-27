@@ -65,6 +65,18 @@ fun AppNavigation(navController: NavHostController) {
         }
         
         // ====================================================================
+        // REGISTER SCREEN
+        // Route: "register"
+        // ====================================================================
+        composable(Screen.Register.route) {
+            com.example.loanova_android.ui.features.auth.register.RegisterScreen(
+                onNavigateToLogin = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        // ====================================================================
         // LOGIN SCREEN
         // Route: "login"
         // ====================================================================
@@ -80,6 +92,9 @@ fun AppNavigation(navController: NavHostController) {
                         // Efek: User tidak bisa back ke Login/Home setelah login
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                },
+                onNavigateToRegister = {
+                    navController.navigate(Screen.Register.route)
                 }
             )
         }

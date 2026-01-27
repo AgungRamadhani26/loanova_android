@@ -37,7 +37,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase // Dependency dari Domain Layer
+    private val loginUseCase: LoginUseCase, // Dependency dari Domain Layer
+    private val gson: com.google.gson.Gson
 ) : ViewModel() {
 
     // ========================================================================
@@ -78,13 +79,9 @@ class LoginViewModel @Inject constructor(
      * @param password Password yang diinput user
      */
     fun login(username: String, password: String) {
-        // STEP 1: Validasi input di UI layer (fail fast principle)
-        // Validasi ini untuk UX yang cepat, validasi business di Domain layer
-        if (username.isBlank() || password.isBlank()) {
-            _uiState.update { it.copy(error = "Username dan password tidak boleh kosong") }
-            return // Early return jika validasi gagal
-        }
-
+        // STEP 1: Validasi di-handle oleh Backend untuk konsistensi error message
+        // Kita langsung panggil API meskipun kosong, agar response error sesuai Web
+        
         // STEP 2-5: Eksekusi login dalam coroutine
         // viewModelScope: CoroutineScope yang terikat lifecycle ViewModel
         // Jika ViewModel di-destroy, semua coroutine otomatis di-cancel
@@ -113,7 +110,19 @@ class LoginViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, success = resource.data) }
                     }
                     is com.example.loanova_android.core.common.Resource.Error -> {
-                        _uiState.update { it.copy(isLoading = false, error = resource.message ?: "Login gagal") }
+                        val msg = resource.message ?: "Login gagal"
+                        if (msg.startsWith("VALIDATION_ERROR:")) {
+                            try {
+                                val json = msg.substring("VALIDATION_ERROR:".length)
+                                val type = object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+                                val errors: Map<String, String> = gson.fromJson(json, type)
+                                _uiState.update { it.copy(isLoading = false, error = "Validasi gagal", fieldErrors = errors) }
+                            } catch (e: Exception) {
+                                _uiState.update { it.copy(isLoading = false, error = "Terjadi kesalahan validasi", fieldErrors = null) }
+                            }
+                        } else {
+                            _uiState.update { it.copy(isLoading = false, error = msg, fieldErrors = null) }
+                        }
                     }
                 }
             }

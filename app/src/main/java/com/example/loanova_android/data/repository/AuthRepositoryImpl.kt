@@ -94,8 +94,26 @@ class AuthRepositoryImpl @Inject constructor(
                     )
                 }
             } else {
-                val errorMessage = body?.message ?: response.message()
-                emit(Resource.Error(errorMessage))
+                val errorBody = response.errorBody()?.string()
+                if (errorBody != null) {
+                    try {
+                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.LoginResponse>>() {}.type
+                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.LoginResponse> = gson.fromJson(errorBody, type)
+                        
+                        if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
+                             val errorsJson = gson.toJson(errorResponse.data.errors)
+                             emit(Resource.Error("VALIDATION_ERROR:$errorsJson"))
+                        } else {
+                             // Fallback to message from API or standard HTTP message
+                             val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
+                             emit(Resource.Error(msg))
+                        }
+                    } catch (e: Exception) {
+                        emit(Resource.Error(response.message()))
+                    }
+                } else {
+                    emit(Resource.Error(response.message()))
+                }
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))

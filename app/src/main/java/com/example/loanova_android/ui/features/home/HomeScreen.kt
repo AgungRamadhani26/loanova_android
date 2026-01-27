@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,7 +50,14 @@ fun HomeScreen(
     }
 
     Scaffold(
-        topBar = { HomeHeader(isLoggedIn = uiState.isLoggedIn, username = uiState.username) },
+        topBar = {
+            HomeHeader(
+                isLoggedIn = uiState.isLoggedIn,
+                username = uiState.username,
+                onLogin = onNavigateToLogin,
+                onLogout = { viewModel.logout() }
+            )
+        },
         bottomBar = {
             LoanovaBottomNavigation(
                 selectedTab = selectedTab,
@@ -263,7 +271,12 @@ fun LoanovaBottomNavigation(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeHeader(isLoggedIn: Boolean, username: String?) {
+fun HomeHeader(
+    isLoggedIn: Boolean,
+    username: String?,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit
+) {
     CenterAlignedTopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -289,8 +302,20 @@ fun HomeHeader(isLoggedIn: Boolean, username: String?) {
         ),
         actions = {
             if (isLoggedIn) {
-                IconButton(onClick = { /* TODO: Profile or Notifications */ }) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.Gray)
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = "Logout",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else {
+                IconButton(onClick = onLogin) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Login,
+                        contentDescription = "Login",
+                        tint = LoanovaBlue
+                    )
                 }
             }
         }
@@ -440,26 +465,69 @@ fun PlafondListSection(plafonds: List<Plafond>) {
 
 @Composable
 fun PlafondCard(plafond: Plafond, modifier: Modifier = Modifier) {
+    val themeColor = getPlafondColor(plafond.name)
+    
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), // Increased elevation
+        border = androidx.compose.foundation.BorderStroke(2.dp, themeColor) // Thicker, opaque border
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = plafond.name, fontWeight = FontWeight.Bold, color = LoanovaBlue)
-            Text(text = plafond.description, style = MaterialTheme.typography.bodySmall, color = Color.Gray, maxLines = 2)
+        Column(
+            modifier = Modifier
+                .background(themeColor.copy(alpha = 0.1f)) // Slightly more visible background tint
+                .padding(16.dp)
+        ) {
+            Text(
+                text = plafond.name, 
+                fontWeight = FontWeight.Black, // Extra bold
+                color = themeColor,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = plafond.description, 
+                style = MaterialTheme.typography.bodySmall, 
+                color = Color.Black.copy(alpha = 0.7f), // Darker text for readability
+                maxLines = 2
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = "Max Limit", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(text = formatCurrency(plafond.maxAmount), fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Text(
+                text = "Max Limit", 
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), 
+                color = Color.Black.copy(alpha = 0.6f)
+            )
+            Text(
+                text = formatCurrency(plafond.maxAmount), 
+                fontWeight = FontWeight.Black, 
+                fontSize = 16.sp, // Reduced font size
+                color = themeColor
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Bunga ${plafond.interestRate}% / bulan", style = MaterialTheme.typography.labelSmall, color = LoanovaBlue)
+            Text(
+                text = "Bunga ${plafond.interestRate}% / bulan", 
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), 
+                color = themeColor
+            )
         }
+    }
+}
+
+fun getPlafondColor(name: String): Color {
+    return when {
+        name.contains("Gold", ignoreCase = true) -> Color(0xFFFFB300) // Amber-600 (Brighter Gold)
+        name.contains("Silver", ignoreCase = true) -> Color(0xFF64748B) // Slate-500 (Distinct Silver/Grey)
+        name.contains("Bronze", ignoreCase = true) -> Color(0xFFD2691E) // Chocolate (Vibrant Bronze)
+        name.contains("Platinum", ignoreCase = true) -> Color(0xFF334155) // Slate-700 (Strong Dark Grey)
+        name.contains("Red", ignoreCase = true) -> Color(0xFFEF4444) // Red-500 (Bright Red)
+        name.contains("Black", ignoreCase = true) -> Color(0xFF000000)
+        else -> LoanovaBlue
     }
 }
 
 fun formatCurrency(amount: java.math.BigDecimal): String {
     val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+    format.maximumFractionDigits = 0 // Remove decimals
     return format.format(amount).replace("Rp", "Rp ")
 }
 
