@@ -69,6 +69,10 @@ class AuthRemoteDataSource @Inject constructor(
         return authApi.login(request)
     }
 
+    suspend fun register(request: com.example.loanova_android.data.model.dto.RegisterRequest): Response<ApiResponse<com.example.loanova_android.data.model.dto.RegisterResponse>> {
+        return authApi.register(request)
+    }
+
     /**
      * Mengirim request logout ke API.
      * 

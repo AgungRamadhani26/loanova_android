@@ -54,4 +54,5 @@ interface IAuthRepository {
      */
     fun login(username: String, password: String, fcmToken: String? = null): Flow<Resource<User>>
     fun logout(): Flow<Resource<Boolean>>
+    fun register(username: String, email: String, password: String): Flow<Resource<Boolean>>
 }

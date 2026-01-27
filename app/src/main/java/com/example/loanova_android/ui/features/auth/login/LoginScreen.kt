@@ -70,7 +70,7 @@ import com.example.loanova_android.ui.theme.Loanova_androidTheme
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onNavigateToDashboard: (String) -> Unit,
+    onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,9 +82,8 @@ fun LoginScreen(
     // Key = uiState.success: Effect dijalankan ketika success berubah
     LaunchedEffect(uiState.success) {
         uiState.success?.let {
-            // Jika success tidak null, navigasi ke Dashboard
-            // it.username: mengambil username dari User object
-            onNavigateToDashboard(it.username)
+            // Jika success tidak null, navigasi ke Home
+            onLoginSuccess()
         }
     }
 
@@ -179,24 +178,25 @@ fun LoginScreenContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 
-                if (uiState.error != null) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = uiState.error != null,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+                ) {
                     Surface(
                         color = Color(0xFFFDE8E8), // Pink background
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.2f)), // Subtle red border
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center // Matches the centered look in user's screenshot, but web might be left. 
-                            // User's screenshot had it entered. Web screenshot had it left? 
-                            // Web screenshot 1: "Validasi gagal" is Left aligned next to icon.
-                            // Web screenshot 2: "Username atau password salah" is Left aligned.
-                            // Android screenshot: Centered.
-                            // User said "kamu buta ya", implying strong mismatch.
-                            // I will change it to Start (Left) alignment to match Web exactly.
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
@@ -206,11 +206,11 @@ fun LoginScreenContent(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = uiState.error,
+                                text = uiState.error ?: "",
                                 color = Color(0xFFEF4444),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold, // Slightly less aggressive than Bold
                                 fontSize = 14.sp,
-                                textAlign = TextAlign.Start // Left aligned like Web
+                                textAlign = TextAlign.Start
                             )
                         }
                     }

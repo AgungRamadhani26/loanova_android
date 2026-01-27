@@ -8,6 +8,7 @@ package com.example.loanova_android.ui.features.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.loanova_android.domain.usecase.auth.LoginUseCase
+import com.example.loanova_android.core.common.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,14 +104,15 @@ class LoginViewModel @Inject constructor(
             // Observe Flow dari UseCase
             loginUseCase.execute(username, password, fcmToken).collect { resource ->
                 when (resource) {
-                    is com.example.loanova_android.core.common.Resource.Loading -> {
+                    is Resource.Loading -> {
                         _uiState.update { it.copy(isLoading = true, error = null) }
                     }
-                    is com.example.loanova_android.core.common.Resource.Success -> {
+                    is Resource.Success -> {
                         _uiState.update { it.copy(isLoading = false, success = resource.data) }
                     }
-                    is com.example.loanova_android.core.common.Resource.Error -> {
-                        val msg = resource.message ?: "Login gagal"
+                    is Resource.Error -> {
+                        val rawMsg = resource.message ?: "Login gagal"
+                        val msg = if (rawMsg.isBlank()) "Login gagal" else rawMsg
                         if (msg.startsWith("VALIDATION_ERROR:")) {
                             try {
                                 val json = msg.substring("VALIDATION_ERROR:".length)

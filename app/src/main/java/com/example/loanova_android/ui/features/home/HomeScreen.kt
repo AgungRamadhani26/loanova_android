@@ -24,7 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.domain.model.Plafond
+import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.ui.theme.*
+import com.example.loanova_android.ui.features.profile.ProfileScreen
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -84,12 +86,10 @@ fun HomeScreen(
                 uiState = uiState,
                 onNavigateToLogin = onNavigateToLogin
             )
-            3 -> ProfileContent(
+            3 -> ProfileScreen(
                 padding = padding,
-                username = uiState.username,
                 onLogout = { 
                     viewModel.logout() 
-                    // Navigation back to home is handled by LaunchedEffect observing isLoggedIn
                 }
             )
             else -> Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -99,75 +99,12 @@ fun HomeScreen(
     }
 }
 
-/**
- * Halaman Konten Profil.
- * Ditampilkan saat user memilih tab Profil.
- * 
- * FITUR:
- * - Menampilkan Avatar sederhana (Inisial User).
- * - Menampilkan Username dan Role.
- * - Tombol Logout yang memanggil viewModel.logout().
- * 
- * @param username Username user yang sedang login.
- * @param onLogout Callback saat tombol logout ditekan.
- */
 @Composable
-fun ProfileContent(
-    padding: PaddingValues,
-    username: String?,
-    onLogout: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Avatar
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(LoanovaLightBlue),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = username?.take(1)?.uppercase() ?: "?",
-                style = MaterialTheme.typography.displayMedium,
-                color = LoanovaBlue,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = username ?: "User",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
-            text = "Customer",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.ExitToApp, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Keluar (Logout)")
-        }
+fun ProfileDetailRow(label: String, value: String) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f), modifier = Modifier.padding(top = 8.dp))
     }
 }
 

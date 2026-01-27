@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.local.TokenManager
 import com.example.loanova_android.domain.model.Plafond
+import com.example.loanova_android.domain.usecase.auth.LogoutUseCase
 import com.example.loanova_android.domain.usecase.plafond.GetPublicPlafondsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getPublicPlafondsUseCase: GetPublicPlafondsUseCase,
-    private val logoutUseCase: com.example.loanova_android.domain.usecase.auth.LogoutUseCase,
+    private val logoutUseCase: LogoutUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -45,18 +46,9 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
-    
+
     /**
      * Menghandle aksi Logout dari UI.
-     * 
-     * FLOW:
-     * 1. Set loading state.
-     * 2. Panggil LogoutUseCase.
-     * 3. Collect result (kita tidak terlalu peduli result success/fail karena repo sudah force clear).
-     * 4. Update UI State:
-     *    - isLoading = false
-     *    - isLoggedIn = false (ini akan mentrigger navigasi di UI)
-     *    - username = null
      */
     fun logout() {
         viewModelScope.launch {
@@ -70,7 +62,6 @@ class HomeViewModel @Inject constructor(
                          username = null
                      ) 
                  }
-                 // If success, just done.
             }
         }
     }

@@ -14,7 +14,5 @@ data class LoginResponse(
     @SerializedName("roles")
     val roles: List<String>? = null,
     @SerializedName("permissions")
-    val permissions: List<String>? = null,
-    @SerializedName("errors")
-    val errors: Map<String, String>? = null
+    val permissions: List<String>? = null
 )

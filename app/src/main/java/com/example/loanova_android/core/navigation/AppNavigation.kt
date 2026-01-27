@@ -14,7 +14,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.loanova_android.ui.features.auth.login.LoginScreen
 import com.example.loanova_android.ui.features.home.HomeScreen
-import com.example.loanova_android.ui.features.dashboard.DashboardScreen
 
 /**
  * AppNavigation - Composable untuk setup navigation graph aplikasi.
@@ -80,16 +79,15 @@ fun AppNavigation(navController: NavHostController) {
         // LOGIN SCREEN
         // Route: "login"
         // ====================================================================
+
         composable(Screen.Login.route) {
             LoginScreen(
                 // Callback dipanggil setelah login sukses
-                // Menerima username untuk ditampilkan di Dashboard
-                onNavigateToDashboard = { username ->
-                    // Navigate ke Dashboard dengan username sebagai argument
-                    navController.navigate(Screen.Dashboard.createRoute(username)) {
-                        // popUpTo: Hapus screen dari back stack
-                        // inclusive = true: Home juga dihapus dari stack
-                        // Efek: User tidak bisa back ke Login/Home setelah login
+                onLoginSuccess = {
+                    // Navigate kembali ke Home
+                    // popUpTo(Screen.Home.route) { inclusive = true } 
+                    // Artinya: Hapus Home lama (state belum login) dan replace dengan Home baru (state login)
+                    navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
                 },
@@ -97,28 +95,6 @@ fun AppNavigation(navController: NavHostController) {
                     navController.navigate(Screen.Register.route)
                 }
             )
-        }
-        
-        // ====================================================================
-        // DASHBOARD SCREEN
-        // Route: "dashboard/{username}"
-        // Menerima argument username dari navigation
-        // ====================================================================
-        composable(
-            route = Screen.Dashboard.route, // "dashboard/{username}"
-            // Definisi arguments yang diterima screen ini
-            arguments = listOf(
-                navArgument("username") { 
-                    type = NavType.StringType // Tipe data argument
-                }
-            )
-        ) { backStackEntry ->
-            // Extract argument dari back stack entry
-            // arguments?.getString("key") untuk mengambil String argument
-            val username = backStackEntry.arguments?.getString("username") ?: ""
-            
-            // Pass username ke DashboardScreen
-            DashboardScreen(username = username)
         }
     }
 }

@@ -97,22 +97,25 @@ class AuthRepositoryImpl @Inject constructor(
                 val errorBody = response.errorBody()?.string()
                 if (errorBody != null) {
                     try {
-                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.LoginResponse>>() {}.type
-                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.LoginResponse> = gson.fromJson(errorBody, type)
+                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData>>() {}.type
+                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData> = gson.fromJson(errorBody, type)
                         
                         if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
                              val errorsJson = gson.toJson(errorResponse.data.errors)
                              emit(Resource.Error("VALIDATION_ERROR:$errorsJson"))
+                             return@flow
                         } else {
                              // Fallback to message from API or standard HTTP message
                              val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
                              emit(Resource.Error(msg))
+                             return@flow
                         }
                     } catch (e: Exception) {
                         emit(Resource.Error(response.message()))
+                        return@flow
                     }
                 } else {
-                    emit(Resource.Error(response.message()))
+                     emit(Resource.Error(response.message()))
                 }
             }
         } catch (e: Exception) {
@@ -158,6 +161,43 @@ class AuthRepositoryImpl @Inject constructor(
             // Skenario Network Error (Offline): Tetap paksa logout lokal
             tokenManager.clearSession()
             emit(Resource.Error(e.message ?: "Logout error"))
+        }
+    }.flowOn(Dispatchers.IO)
+    override fun register(username: String, email: String, password: String): Flow<Resource<Boolean>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = com.example.loanova_android.data.model.dto.RegisterRequest(username, email, password)
+            val response = remoteDataSource.register(request)
+            val body = response.body()
+
+            if (response.isSuccessful && body?.success == true) {
+                emit(Resource.Success(true))
+            } else {
+                val errorBody = response.errorBody()?.string()
+                if (errorBody != null) {
+                    try {
+                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData>>() {}.type
+                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData> = gson.fromJson(errorBody, type)
+                        
+                        if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
+                             val errorsJson = gson.toJson(errorResponse.data.errors)
+                             emit(Resource.Error("VALIDATION_ERROR:$errorsJson"))
+                             return@flow
+                        } else {
+                             val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
+                             emit(Resource.Error(msg))
+                             return@flow
+                        }
+                    } catch (e: Exception) {
+                        // ignore and fallthrough
+                    }
+                }
+                val errorMessage = body?.message ?: response.message()
+                val finalMsg = if (errorMessage.isBlank()) "Terjadi kesalahan (Kode: ${response.code()})" else errorMessage
+                emit(Resource.Error(finalMsg))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
         }
     }.flowOn(Dispatchers.IO)
 }

@@ -6,6 +6,7 @@ import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.chuckerteam.chucker.api.RetentionManager
 import com.example.loanova_android.data.remote.api.AuthApi
 import com.example.loanova_android.data.remote.api.PlafondApi
+import com.example.loanova_android.data.remote.api.UserProfileApi
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -66,11 +67,13 @@ object NetworkModule {
     fun provideOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
         chuckerInterceptor: ChuckerInterceptor,
+        authInterceptor: com.example.loanova_android.data.remote.AuthInterceptor,
         tokenAuthenticator: com.example.loanova_android.data.remote.TokenAuthenticator
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(chuckerInterceptor)
+            .addInterceptor(authInterceptor)
             .authenticator(tokenAuthenticator)
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -97,5 +100,11 @@ object NetworkModule {
     @Singleton
     fun providePlafondApi(retrofit: Retrofit): PlafondApi {
         return retrofit.create(PlafondApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserProfileApi(retrofit: Retrofit): UserProfileApi {
+        return retrofit.create(UserProfileApi::class.java)
     }
 }
