@@ -43,13 +43,35 @@ import com.example.loanova_android.R
 import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
 import com.example.loanova_android.ui.theme.LoanovaBackground
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.FileProvider
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Objects
 
+
+/**
+ * Layar Lengkapi Profil (Complete Profile Screen).
+ * 
+ * Screen ini digunakan oleh user baru untuk melengkapi data diri setelah registrasi.
+ * Fitur utama:
+ * 1. Form Data Diri (Nama, Telepon, Alamat, NIK, Tanggal Lahir, NPWP).
+ * 2. Upload Dokumen (Foto Profil, KTP, NPWP) menggunakan Kamera atau Galeri.
+ * 3. Kompresi Gambar Otomatis (Max 1MB) sebelum dikirim ke server.
+ * 
+ * @param onNavigateBack Callback untuk kembali ke layar sebelumnya.
+ * @param onSuccess Callback ketika profil berhasil disimpan (misal: navigasi ke Home).
+ * @param viewModel ViewModel untuk mengatur logic dan state dari screen ini.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompleteProfileScreen(
@@ -73,10 +95,112 @@ fun CompleteProfileScreen(
     var profileUri by remember { mutableStateOf<Uri?>(null) }
     var npwpUri by remember { mutableStateOf<Uri?>(null) }
 
+    // --- CAMERA & GALLERY LOGIC ---
+    // Dialog state: Apakah popup "Pilih Kamera/Galeri" sedang muncul?
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    
+    // Target state: Foto mana yang sedang diedit? ("ktp", "profile", atau "npwp")
+    var currentImageTarget by remember { mutableStateOf<String?>(null) } 
+    
+    // Temp URI: Menyimpan lokasi sementara foto hasil jepretan kamera sebelum diproses
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    /**
+     * Membuat URI sementara untuk menyimpan hasil foto kamera.
+     * Menggunakan FileProvider agar aplikasi Kamera eksternal (bawaan HP)
+     * bisa mengakses file di folder cache aplikasi kita secara aman.
+     */
+    fun createTempPictureUri(): Uri {
+        val tempFile = File.createTempFile("camera_img_", ".jpg", context.cacheDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+        return FileProvider.getUriForFile(
+            Objects.requireNonNull(context),
+            "com.example.loanova_android.provider", // Hardcoded to match Manifest
+            tempFile
+        )
+    }
+
     // Launchers
-    val ktpLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? -> uri?.let { ktpUri = it; viewModel.clearError() } }
-    val profileLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? -> uri?.let { profileUri = it; viewModel.clearError() } }
-    val npwpLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? -> uri?.let { npwpUri = it; viewModel.clearError() } }
+    val galleryLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? -> 
+        uri?.let { 
+            when(currentImageTarget) {
+                "ktp" -> ktpUri = it
+                "profile" -> profileUri = it
+                "npwp" -> npwpUri = it
+            }
+            viewModel.clearError() 
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
+        if (success && tempCameraUri != null) {
+            when(currentImageTarget) {
+                "ktp" -> ktpUri = tempCameraUri
+                "profile" -> profileUri = tempCameraUri
+                "npwp" -> npwpUri = tempCameraUri
+            }
+            viewModel.clearError()
+        }
+    }
+
+    // Permission Launcher: Menangani permintaan izin kamera secara Runtime (Wajib untuk Android 6.0+)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Jika user mengizinkan, langsung buka kamera
+            try {
+                val uri = createTempPictureUri()
+                tempCameraUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            // Jika user menolak, tampilkan pesan edukasi
+            Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Function to handle click
+    fun openImageSelection(target: String) {
+        currentImageTarget = target
+        showImageSourceDialog = true
+    }
+
+    if (showImageSourceDialog) {
+        ImageSourceOptionDialog(
+            onDismiss = { showImageSourceDialog = false },
+            onCameraClick = {
+                showImageSourceDialog = false
+                val permissionToCheck = android.Manifest.permission.CAMERA
+                val isGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, 
+                    permissionToCheck
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                
+                if (isGranted) {
+                    try {
+                        val uri = createTempPictureUri()
+                        tempCameraUri = uri
+                        cameraLauncher.launch(uri)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    permissionLauncher.launch(permissionToCheck)
+                }
+            },
+            onGalleryClick = {
+                showImageSourceDialog = false
+                galleryLauncher.launch("image/*")
+            }
+        )
+    }
 
     LaunchedEffect(uiState.success) {
         if (uiState.success != null) {
@@ -319,19 +443,19 @@ fun CompleteProfileScreen(
                     label = "Foto Profil (Wajib)", 
                     uri = profileUri, 
                     error = uiState.fieldErrors?.get("profilePhoto"),
-                    onClick = { profileLauncher.launch("image/*") }
+                    onClick = { openImageSelection("profile") }
                 )
                 FileUploadRow(
                     label = "Foto KTP (Wajib)", 
                     uri = ktpUri, 
                     error = uiState.fieldErrors?.get("ktpPhoto"),
-                    onClick = { ktpLauncher.launch("image/*") }
+                    onClick = { openImageSelection("ktp") }
                 )
                 FileUploadRow(
                     label = "Foto NPWP (Opsional)", 
                     uri = npwpUri, 
                     error = uiState.fieldErrors?.get("npwpPhoto"),
-                    onClick = { npwpLauncher.launch("image/*") }
+                    onClick = { openImageSelection("npwp") }
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -489,18 +613,143 @@ fun FileUploadRow(label: String, uri: Uri?, error: String? = null, onClick: () -
     }
 }
 
-// Helper to convert Uri to File
+/**
+ * Mengubah URI (dari Galeri/Kamera) menjadi File fisik.
+ * Fitur Spesial: Mengompresi gambar jika ukurannya > 1MB.
+ * 
+ * Algoritma:
+ * 1. Baca Stream dari URI.
+ * 2. Decode menjadi Bitmap (gambar di memori).
+ * 3. Cek ukuran stream. Jika > 1MB, turunkan kualitas (Quality) sebesar 5%.
+ * 4. Ulangi sampai ukuran <= 1MB atau kualitas < 5%.
+ * 5. Simpan hasil akhir ke File sementara (.jpg).
+ */
 fun uriToFile(context: Context, uri: Uri): File? {
     return try {
-        val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+        val contentResolver = context.contentResolver
         val file = File.createTempFile("temp_image", ".jpg", context.cacheDir)
-        val outputStream = FileOutputStream(file)
-        inputStream?.copyTo(outputStream)
+
+        // 1. Decode stream to Bitmap
+        val inputStream: InputStream? = contentResolver.openInputStream(uri)
+        val bitmap = BitmapFactory.decodeStream(inputStream)
         inputStream?.close()
-        outputStream.close()
+
+        if (bitmap == null) return null
+
+        // 2. Compress Bitmap Logic
+        var compressQuality = 100
+        var streamLength: Int
+        
+        // Loop: Tekan terus sampai ukurannya pas (< 1MB)
+        do {
+            val bmpStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, compressQuality, bmpStream)
+            val bmpPicByteArray = bmpStream.toByteArray()
+            streamLength = bmpPicByteArray.size
+            
+            if (streamLength > 1_000_000) {
+                compressQuality -= 5 // Kurangi kualitas 5% setiap iterasi
+            }
+            
+            // Safety break: Jangan sampai kualitas 0 atau loop infinite
+            if (compressQuality < 5) break
+            
+            bmpStream.close()
+        } while (streamLength > 1_000_000)
+
+        // 3. Save Compressed Bitmap ke File Fisik
+        val fos = FileOutputStream(file)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, compressQuality, fos)
+        fos.flush()
+        fos.close()
+        
         file
     } catch (e: Exception) {
         e.printStackTrace()
         null
+    }
+}
+
+@Composable
+fun ImageSourceOptionDialog(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.padding(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Pilih Sumber Gambar",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = LoanovaBlue
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    // Camera Option
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onCameraClick() }
+                    ) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = LoanovaBlue.copy(alpha = 0.1f),
+                            modifier = Modifier.size(64.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Kamera",
+                                    tint = LoanovaBlue,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    }
+
+                    // Gallery Option
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onGalleryClick() }
+                    ) {
+                         Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = LoanovaLightBlue.copy(alpha = 0.1f),
+                            modifier = Modifier.size(64.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Galeri",
+                                    tint = LoanovaBlue,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                TextButton(onClick = onDismiss) {
+                    Text("Batal", color = Color.Gray)
+                }
+            }
+        }
     }
 }

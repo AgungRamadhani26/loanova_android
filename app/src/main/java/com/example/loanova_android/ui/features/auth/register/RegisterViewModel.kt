@@ -15,6 +15,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel untuk Halaman Registrasi.
+ * 
+ * Bertanggung jawab untuk:
+ * 1. Menerima input form (RegisterRequest).
+ * 2. Mengelola State UI (Loading, Success, Error).
+ * 3. Menangani parsing error validasi dari backend (misal: "Email sudah terdaftar").
+ */
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
@@ -24,6 +32,13 @@ class RegisterViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
+    /**
+     * Memulai proses registrasi.
+     * 
+     * @param request Data user baru (username, email, password).
+     * Errors dikembalikan dalam bentuk Resource.Error yang kemudian di-parse.
+     * Jika formatnya "VALIDATION_ERROR:...", maka akan dikonversi menjadi fieldErrors map.
+     */
     fun register(request: RegisterRequest) {
         // Validation check is delegated to Backend/Repository for consistency
         viewModelScope.launch {

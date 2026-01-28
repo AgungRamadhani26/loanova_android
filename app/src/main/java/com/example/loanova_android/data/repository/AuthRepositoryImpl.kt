@@ -163,6 +163,14 @@ class AuthRepositoryImpl @Inject constructor(
             emit(Resource.Error(e.message ?: "Logout error"))
         }
     }.flowOn(Dispatchers.IO)
+    /**
+     * Implementasi Registrasi User Baru.
+     * 
+     * @param username Username yang diinginkan
+     * @param email Email valid
+     * @param password Password
+     * @return Flow<Resource<Boolean>> - True jika sukses, False/Error jika gagal.
+     */
     override fun register(username: String, email: String, password: String): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {

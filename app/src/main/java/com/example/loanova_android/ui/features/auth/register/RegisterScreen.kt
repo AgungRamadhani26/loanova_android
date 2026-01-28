@@ -35,6 +35,19 @@ import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
 
+/**
+ * Halaman Registrasi (Daftar Akun Baru).
+ * 
+ * Screen ini memfasilitasi user baru untuk membuat akun.
+ * Fitur:
+ * 1. Form Input (Username, Email, Password).
+ * 2. Visual feedback untuk error validasi (field error) atau global error.
+ * 3. Navigasi ke Login Screen jika sudah punya akun atau sukses daftar.
+ * 4. Menampilkan Dialog Sukses setelah pendaftaran berhasil.
+ * 
+ * @param onNavigateToLogin Callback navigasi ke halaman Login.
+ * @param viewModel ViewModel registrasi (di-inject Hilt).
+ */
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,

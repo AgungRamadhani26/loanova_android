@@ -22,6 +22,16 @@ import com.example.loanova_android.data.model.dto.ValidationErrorData
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
+/**
+ * Implementasi Repository Profil User.
+ * Berfungsi sebagai jembatan data antara Aplikasi dan API Server.
+ * 
+ * Tanggung Jawab:
+ * 1. Mengubah Request Object menjadi Multipart/Form-Data untuk upload file.
+ * 2. Menangani Response API (Success/Error).
+ * 3. Mengonversi Error Body JSON (jika ada) menjadi string format khusus
+ *    ("VALIDATION_ERROR||...") agar bisa diproses ViewModel.
+ */
 class UserProfileRepositoryImpl @Inject constructor(
     private val api: UserProfileApi,
     private val gson: Gson
@@ -58,6 +68,12 @@ class UserProfileRepositoryImpl @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
+    /**
+     * Mengirim data profil lengkap (beserta foto) ke server.
+     * 
+     * @param request Object DTO yang berisi data teks dan File foto.
+     * @return Flow yang memancarkan status: Loading -> Success/Error.
+     */
     override fun completeProfile(request: UserProfileCompleteRequest): Flow<Resource<UserProfileResponse>> = flow {
         emit(Resource.Loading())
         try {
@@ -87,24 +103,31 @@ class UserProfileRepositoryImpl @Inject constructor(
                     emit(Resource.Error(body.message))
                 }
             } else {
+                // Handle Error Response (400, 401, 500 etc)
                 val errorBody = response.errorBody()?.string()
                 if (errorBody != null) {
                     try {
+                        // Coba parsing Error sebagai Format Validasi Loanova
                         val type = object : TypeToken<ApiResponse<ValidationErrorData>>() {}.type
                         val errorResponse: ApiResponse<ValidationErrorData> = gson.fromJson(errorBody, type)
                         
+                        // Jika ada data error spesifik (field errors)
                         if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
                              val errorsJson = gson.toJson(errorResponse.data.errors)
                              val backendMessage = if (errorResponse.message.isNullOrBlank()) response.message() else errorResponse.message
+                             
+                             // Format Khusus untuk dikirim ke ViewModel:
+                             // "VALIDATION_ERROR || Pesan Utama || JSON Map Error"
                              emit(Resource.Error("VALIDATION_ERROR||$backendMessage||$errorsJson"))
                              return@flow
                         } else {
-                             // Fallback
+                             // Fallback: Error api biasa (bukan validasi field)
                              val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
                              emit(Resource.Error(msg))
                              return@flow
                         }
                     } catch (e: Exception) {
+                        // Jika bukan format validasi kita, tampilkan pesan standar
                         emit(Resource.Error(response.message()))
                     }
                 } else {

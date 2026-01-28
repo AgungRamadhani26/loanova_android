@@ -6,6 +6,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Manajer Token Otentikasi (Local Storage).
+ * 
+ * Menggunakan SharedPreferences untuk menyimpan data sesi login secara persisten.
+ * Data yang disimpan:
+ * 1. Access Token (untuk Header Authorization API).
+ * 2. Refresh Token (untuk memperbarui sesi di masa depan).
+ * 3. Username (untuk identitas UI).
+ */
 @Singleton
 class TokenManager @Inject constructor(
     @ApplicationContext context: Context
@@ -38,6 +47,10 @@ class TokenManager @Inject constructor(
         return prefs.getString(KEY_REFRESH_TOKEN, null)
     }
 
+    /**
+     * Mengambil Access Token.
+     * @return Token JWT atau null jika tidak ada.
+     */
     fun getAccessToken(): String? {
         return prefs.getString(KEY_ACCESS_TOKEN, null)
     }
@@ -55,6 +68,10 @@ class TokenManager @Inject constructor(
         prefs.edit().clear().apply()
     }
 
+    /**
+     * Cek apakah user sedang login.
+     * @return true jika Access Token tersedia.
+     */
     fun isLoggedIn(): Boolean {
         return getAccessToken() != null
     }
