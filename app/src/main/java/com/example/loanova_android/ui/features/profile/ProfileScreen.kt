@@ -25,6 +25,9 @@ import com.example.loanova_android.ui.theme.LoanovaLightBlue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.example.loanova_android.BuildConfig
 
 /**
  * Halaman Konten Profil.
@@ -119,6 +122,8 @@ fun EmptyProfileState(username: String?, onLogout: () -> Unit) {
     }
 }
 
+// ...
+
 @Composable
 fun FullProfileState(profile: UserProfileResponse, onLogout: () -> Unit) {
     LazyColumn(
@@ -129,17 +134,26 @@ fun FullProfileState(profile: UserProfileResponse, onLogout: () -> Unit) {
              // Header Avatar
              Box(
                 modifier = Modifier
-                    .size(100.dp)
+                    .size(120.dp) // Slightly larger
                     .clip(CircleShape)
                     .background(LoanovaLightBlue),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = profile.fullName.take(1).uppercase(),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = LoanovaBlue,
-                    fontWeight = FontWeight.Bold
-                )
+                if (profile.profilePhoto != null) {
+                    AsyncImage(
+                        model = getImageUrl(profile.profilePhoto),
+                        contentDescription = "Foto Profil",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = profile.fullName.take(1).uppercase(),
+                        style = MaterialTheme.typography.displayMedium,
+                        color = LoanovaBlue,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -165,12 +179,66 @@ fun FullProfileState(profile: UserProfileResponse, onLogout: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    ProfileDetailRow("Email", profile.username)
+                    ProfileDetailRow("Email", profile.username) // Username is email in this system? Or just username.
+                    ProfileDetailRow("Username", profile.username)
                     ProfileDetailRow("No. Telepon", profile.phoneNumber)
                     ProfileDetailRow("Tanggal Lahir", profile.birthDate)
                     ProfileDetailRow("Alamat", profile.userAddress)
                     if (profile.npwpNumber != null) {
                         ProfileDetailRow("NPWP", profile.npwpNumber)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        item {
+            // Document Photos Section
+            Text(
+                text = "Dokumen Pendukung",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = LoanovaBlue,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                textAlign = TextAlign.Start
+            )
+            
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (profile.ktpPhoto != null) {
+                        Text("Foto KTP", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AsyncImage(
+                            model = getImageUrl(profile.ktpPhoto),
+                            contentDescription = "Foto KTP",
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.LightGray)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    
+                    if (profile.npwpPhoto != null) {
+                        Text("Foto NPWP", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        AsyncImage(
+                            model = getImageUrl(profile.npwpPhoto),
+                            contentDescription = "Foto NPWP",
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp) // Adjust height as needed
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.LightGray)
+                        )
                     }
                 }
             }
@@ -190,6 +258,16 @@ fun FullProfileState(profile: UserProfileResponse, onLogout: () -> Unit) {
             }
         }
     }
+}
+
+fun getImageUrl(path: String?): String? {
+    if (path.isNullOrEmpty()) return null
+    // Remove leading slash if present to avoid double slash with base url trailing slash
+    val cleanPath = if (path.startsWith("/")) path.substring(1) else path
+    val url = "${BuildConfig.BASE_URL}uploads/$cleanPath"
+     // Note: Backend maps /uploads/** to the upload directory (WebConfig.java).
+     // JSON returns relative path e.g. "ktp/filename.jpg", so we prepend "uploads/".
+     return "${BuildConfig.BASE_URL}uploads/$cleanPath"
 }
 
 @Composable

@@ -3,8 +3,24 @@ package com.example.loanova_android
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import javax.inject.Inject
+import okhttp3.OkHttpClient
+
 @HiltAndroidApp
-class MyApplication : Application() {
+class MyApplication : Application(), ImageLoaderFactory {
+
+    @Inject
+    lateinit var okHttpClient: OkHttpClient
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .okHttpClient(okHttpClient)
+            .crossfade(true)
+            .build()
+    }
+
     override fun onCreate() {
         super.onCreate()
         try {
