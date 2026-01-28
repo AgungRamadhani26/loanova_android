@@ -28,8 +28,8 @@ class TokenManager @Inject constructor(
      */
     fun saveSession(accessToken: String, refreshToken: String, username: String) {
         prefs.edit()
-            .putString(KEY_ACCESS_TOKEN, accessToken)
-            .putString(KEY_REFRESH_TOKEN, refreshToken)
+            .putString(KEY_ACCESS_TOKEN, accessToken.trim())
+            .putString(KEY_REFRESH_TOKEN, refreshToken.trim())
             .putString(KEY_USERNAME, username)
             .apply()
     }

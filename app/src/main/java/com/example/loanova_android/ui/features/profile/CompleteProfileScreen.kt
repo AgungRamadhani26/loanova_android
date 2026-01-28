@@ -36,6 +36,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.R
 import com.example.loanova_android.ui.theme.LoanovaBlue
@@ -44,6 +46,9 @@ import com.example.loanova_android.ui.theme.LoanovaBackground
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,7 +211,7 @@ fun CompleteProfileScreen(
                     label = "Nomor Telepon Aktif",
                     icon = Icons.Outlined.Phone,
                     error = uiState.fieldErrors?.get("phoneNumber"),
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    keyboardType = KeyboardType.Number
                 )
 
                 LoanovaTextField(
@@ -228,7 +233,7 @@ fun CompleteProfileScreen(
                     label = "NIK (16 Digit)",
                     icon = Icons.Outlined.CreditCard,
                     error = uiState.fieldErrors?.get("nik"),
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    keyboardType = KeyboardType.Number
                 )
 
                 // Date Picker
@@ -242,8 +247,8 @@ fun CompleteProfileScreen(
                             TextButton(
                                 onClick = {
                                     datePickerState.selectedDateMillis?.let { millis ->
-                                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                                        birthDate = sdf.format(java.util.Date(millis))
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                        birthDate = sdf.format(Date(millis))
                                         viewModel.clearError()
                                     }
                                     openDatePicker = false
@@ -379,7 +384,7 @@ fun LoanovaTextField(
     label: String,
     icon: ImageVector,
     error: String? = null,
-    keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+    keyboardType: KeyboardType = KeyboardType.Text,
     readOnly: Boolean = false
 ) {
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -395,7 +400,7 @@ fun LoanovaTextField(
                     tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
                 )
             },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(16.dp),

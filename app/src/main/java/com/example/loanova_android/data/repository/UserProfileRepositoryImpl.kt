@@ -17,10 +17,14 @@ import java.io.File
 import javax.inject.Inject
 
 import com.example.loanova_android.data.model.dto.UserProfileCompleteRequest
+import com.example.loanova_android.core.base.ApiResponse
+import com.example.loanova_android.data.model.dto.ValidationErrorData
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class UserProfileRepositoryImpl @Inject constructor(
     private val api: UserProfileApi,
-    private val gson: com.google.gson.Gson
+    private val gson: Gson
 ) : IUserProfileRepository {
 
     override fun getMyProfile(): Flow<Resource<UserProfileResponse>> = flow {
@@ -86,8 +90,8 @@ class UserProfileRepositoryImpl @Inject constructor(
                 val errorBody = response.errorBody()?.string()
                 if (errorBody != null) {
                     try {
-                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData>>() {}.type
-                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData> = gson.fromJson(errorBody, type)
+                        val type = object : TypeToken<ApiResponse<ValidationErrorData>>() {}.type
+                        val errorResponse: ApiResponse<ValidationErrorData> = gson.fromJson(errorBody, type)
                         
                         if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
                              val errorsJson = gson.toJson(errorResponse.data.errors)

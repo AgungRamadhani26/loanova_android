@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +44,7 @@ fun HomeScreen(
         viewModel.checkLoginStatus()
     }
 
-    var selectedTab by remember { mutableIntStateOf(0) } // 0: Home
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0: Home
 
     // Reset tab to Home when logged out
     LaunchedEffect(uiState.isLoggedIn) {
