@@ -33,6 +33,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     onNavigateToLogin: () -> Unit = {},
+    onNavigateToCompleteProfile: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -86,11 +87,13 @@ fun HomeScreen(
                 uiState = uiState,
                 onNavigateToLogin = onNavigateToLogin
             )
+
             3 -> ProfileScreen(
                 padding = padding,
                 onLogout = { 
                     viewModel.logout() 
-                }
+                },
+                onNavigateToCompleteProfile = onNavigateToCompleteProfile
             )
             else -> Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Fitur Belum Tersedia / Placeholder")

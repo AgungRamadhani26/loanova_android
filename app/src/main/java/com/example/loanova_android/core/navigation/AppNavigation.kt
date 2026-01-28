@@ -59,6 +59,25 @@ fun AppNavigation(navController: NavHostController) {
                 // Lambda ini akan dipanggil ketika user klik tombol login
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route)
+                },
+                onNavigateToCompleteProfile = {
+                    navController.navigate(Screen.CompleteProfile.route)
+                }
+            )
+        }
+        
+        // ====================================================================
+        // COMPLETE PROFILE SCREEN
+        // Route: "complete_profile"
+        // ====================================================================
+        composable(Screen.CompleteProfile.route) {
+            com.example.loanova_android.ui.features.profile.CompleteProfileScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onSuccess = {
+                    // Navigate back to Home/Profile which should refresh
+                    navController.popBackStack()
                 }
             )
         }
