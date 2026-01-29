@@ -11,4 +11,5 @@ import com.example.loanova_android.data.model.dto.UserProfileCompleteRequest
 interface IUserProfileRepository {
     fun getMyProfile(): Flow<Resource<UserProfileResponse>>
     fun completeProfile(request: UserProfileCompleteRequest): Flow<Resource<UserProfileResponse>>
+    fun updateProfile(request: UserProfileCompleteRequest): Flow<Resource<UserProfileResponse>>
 }

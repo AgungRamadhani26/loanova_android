@@ -62,6 +62,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToCompleteProfile = {
                     navController.navigate(Screen.CompleteProfile.route)
+                },
+                onNavigateToEditProfile = {
+                    navController.navigate(Screen.EditProfile.route)
                 }
             )
         }
@@ -76,7 +79,14 @@ fun AppNavigation(navController: NavHostController) {
                     navController.popBackStack()
                 },
                 onSuccess = {
-                    // Navigate back to Home/Profile which should refresh
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Screen.EditProfile.route) {
+            com.example.loanova_android.ui.features.profile.edit.EditProfileScreen(
+                onNavigateUp = {
                     navController.popBackStack()
                 }
             )

@@ -35,6 +35,7 @@ import java.util.Locale
 fun HomeScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToCompleteProfile: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -94,7 +95,8 @@ fun HomeScreen(
                 onLogout = { 
                     viewModel.logout() 
                 },
-                onNavigateToCompleteProfile = onNavigateToCompleteProfile
+                onNavigateToCompleteProfile = onNavigateToCompleteProfile,
+                onNavigateToEditProfile = onNavigateToEditProfile
             )
             else -> Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Fitur Belum Tersedia / Placeholder")

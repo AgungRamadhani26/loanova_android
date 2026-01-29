@@ -11,12 +11,13 @@ interface UserProfileApi {
     @GET("api/user-profiles/me")
     suspend fun getMyProfile(): Response<ApiResponse<UserProfileResponse>>
 
-    @Multipart
     @POST("api/user-profiles/complete")
     suspend fun completeProfile(
-        @PartMap textParts: Map<String, @JvmSuppressWildcards RequestBody>,
-        @Part ktpPhoto: MultipartBody.Part?,
-        @Part profilePhoto: MultipartBody.Part?,
-        @Part npwpPhoto: MultipartBody.Part?
+        @Body body: RequestBody
+    ): Response<ApiResponse<UserProfileResponse>>
+
+    @PUT("api/user-profiles/update")
+    suspend fun updateProfile(
+        @Body body: RequestBody
     ): Response<ApiResponse<UserProfileResponse>>
 }

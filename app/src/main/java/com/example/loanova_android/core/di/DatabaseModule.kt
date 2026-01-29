@@ -3,6 +3,7 @@ package com.example.loanova_android.core.di
 import android.content.Context
 import androidx.room.Room
 import com.example.loanova_android.core.database.AppDatabase
+import com.example.loanova_android.data.local.dao.PlafondDao
 import com.example.loanova_android.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -21,13 +22,15 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
-            "loanova_db"
-        ).fallbackToDestructiveMigration().build()
+            "loanova.db"
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides
-    @Singleton
-    fun provideUserDao(appDatabase: AppDatabase): UserDao {
-        return appDatabase.userDao()
-    }
+    fun provideUserDao(database: AppDatabase): UserDao = database.userDao()
+
+    @Provides
+    fun providePlafondDao(database: AppDatabase): PlafondDao = database.plafondDao()
 }

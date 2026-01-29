@@ -8,37 +8,68 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
+import com.example.loanova_android.data.local.dao.PlafondDao
+import com.example.loanova_android.data.mapper.DataMappers
+
 class PlafondRepositoryImpl @Inject constructor(
-    private val remoteDataSource: PlafondRemoteDataSource
+    private val remoteDataSource: PlafondRemoteDataSource,
+    private val localDataSource: PlafondDao
 ) : IPlafondRepository {
 
     override fun getPublicPlafonds(): Flow<Resource<List<Plafond>>> = flow {
         emit(Resource.Loading())
+        
+        // 1. Emit Local Data First (Single emission for quick UI show)
+        // We collect first emission of DB flow to show immediate cache
+        try {
+            val localData = localDataSource.getAllPlafonds().firstOrNull()
+            if (!localData.isNullOrEmpty()) {
+                val domainData = localData.map { DataMappers.mapPlafondEntityToDomain(it) }
+                emit(Resource.Success(domainData))
+            }
+        } catch (e: Exception) {
+            // Ignore local read errors, proceed to network
+        }
+
+        // 2. Fetch from Network & Sync
         try {
             val response = remoteDataSource.getPublicPlafonds()
             val body = response.body()
 
             if (response.isSuccessful && body?.success == true && body.data != null) {
-                val plafonds = body.data.map { responseItem ->
-                    Plafond(
-                        id = responseItem.id ?: 0L,
-                        name = responseItem.name ?: "",
-                        description = responseItem.description ?: "",
-                        maxAmount = responseItem.maxAmount ?: java.math.BigDecimal.ZERO,
-                        interestRate = responseItem.interestRate ?: java.math.BigDecimal.ZERO,
-                        tenorMin = responseItem.tenorMin ?: 0,
-                        tenorMax = responseItem.tenorMax ?: 0
-                    )
+                // Map Response -> Entity
+                val entities = body.data.map { DataMappers.mapPlafondResponseToEntity(it) }
+                
+                // Save to DB (Background Sync)
+                localDataSource.deleteAll() // Clear old cache
+                localDataSource.insertAll(entities)
+                
+                // Emit Updated Data from DB (Source of Truth)
+                localDataSource.getAllPlafonds().collect { newLocalData ->
+                     val domainData = newLocalData.map { DataMappers.mapPlafondEntityToDomain(it) }
+                     emit(Resource.Success(domainData))
                 }
-                emit(Resource.Success(plafonds))
             } else {
+                // Network Error
                 val errorMessage = body?.message ?: response.message()
-                emit(Resource.Error(errorMessage))
+                
+                // CRITICAL FIX: Only emit Error if we have NO valid data locally.
+                // If we already emitted local data, we swallow the error (or use a SideEffect channel)
+                // so the UI doesn't flicker to Error screen.
+                val currentLocal = localDataSource.getAllPlafonds().firstOrNull()
+                if (currentLocal.isNullOrEmpty()) {
+                    emit(Resource.Error(errorMessage))
+                }
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
+            // CRITICAL FIX: Same logic for Exceptions (Offline)
+            val currentLocal = localDataSource.getAllPlafonds().firstOrNull()
+            if (currentLocal.isNullOrEmpty()) {
+                emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
+            }
         }
     }.flowOn(Dispatchers.IO)
 }

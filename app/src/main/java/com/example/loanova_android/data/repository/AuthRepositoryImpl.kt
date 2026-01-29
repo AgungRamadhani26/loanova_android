@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
+import com.example.loanova_android.core.base.BaseRepository
 import javax.inject.Inject
 
 /**
@@ -42,30 +43,10 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val remoteDataSource: AuthRemoteDataSource, // Abstraksi untuk network call
     private val gson: Gson, // Untuk deserialize error body
-    private val tokenManager: com.example.loanova_android.data.local.TokenManager // Session Manager
-) : IAuthRepository {
+    private val tokenManager: com.example.loanova_android.data.local.TokenManager, // Session Manager
+    private val userDao: com.example.loanova_android.data.local.dao.UserDao // To clear data on logout
+) : BaseRepository(gson), IAuthRepository {
 
-    /**
-     * Implementasi login yang memanggil remote API.
-     * 
-     * FLOW EKSEKUSI:
-     * 1. Buat LoginRequest DTO dari parameter
-     * 2. Panggil remoteDataSource untuk network call
-     * 3. Parse response dan handle success/error
-     * 4. Map DTO ke Domain Model (User)
-     * 5. Wrap hasil dalam Result
-     * 
-     * ERROR HANDLING STRATEGY:
-     * - HTTP Success + body.success=true -> Result.success
-     * - HTTP Success + body.success=false -> Result.failure dengan message dari API
-     * - HTTP Error (4xx, 5xx) -> Parse error body, extract message
-     * - Network/Exception -> Wrap exception dalam Result.failure
-     * 
-     * @param username Username dari UI
-     * @param password Password dari UI
-     * @param fcmToken FCM Token (Optional)
-     * @return Result<User> - Success dengan User domain model, atau Failure dengan Exception
-     */
     override fun login(username: String, password: String, fcmToken: String?): Flow<Resource<User>> = flow {
         emit(Resource.Loading())
         try {
@@ -73,6 +54,15 @@ class AuthRepositoryImpl @Inject constructor(
             val body = response.body()
 
             if (response.isSuccessful && body?.success == true && body.data != null) {
+                // Save session
+                if (body.data.accessToken != null) {
+                    tokenManager.saveSession(
+                        body.data.accessToken, 
+                        body.data.refreshToken ?: "",
+                        body.data.username ?: username
+                    )
+                }
+                
                 emit(
                     Resource.Success(
                         User(
@@ -85,57 +75,18 @@ class AuthRepositoryImpl @Inject constructor(
                         )
                     )
                 )
-                // Save session
-                if (body.data.accessToken != null) {
-                    tokenManager.saveSession(
-                        body.data.accessToken, 
-                        body.data.refreshToken ?: "",
-                        body.data.username ?: username
-                    )
-                }
             } else {
-                val errorBody = response.errorBody()?.string()
-                if (errorBody != null) {
-                    try {
-                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData>>() {}.type
-                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData> = gson.fromJson(errorBody, type)
-                        
-                        if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
-                             val errorsJson = gson.toJson(errorResponse.data.errors)
-                             emit(Resource.Error("VALIDATION_ERROR:$errorsJson"))
-                             return@flow
-                        } else {
-                             // Fallback to message from API or standard HTTP message
-                             val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
-                             emit(Resource.Error(msg))
-                             return@flow
-                        }
-                    } catch (e: Exception) {
-                        emit(Resource.Error(response.message()))
-                        return@flow
-                    }
-                } else {
-                     emit(Resource.Error(response.message()))
-                }
+                 // Use centralized error parsing
+                 emit(parseError(response))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
         }
     }.flowOn(Dispatchers.IO)
 
-    /**
-     * Implementasi Logout.
-     * 
-     * LOGIC:
-     * 1. Ambil AccessToken & RefreshToken dari local storage (TokenManager).
-     * 2. Kalau token ada, panggil API Logout agar backend blacklist token tsb.
-     * 3. APAPUN HASILNYA (Sukses/Gagal/Error Network), kita harus hapus sesi lokal.
-     *    Alasannya: Kalau user klik logout, mereka berharap keluar dari app.
-     *    Jika API fail (misal offline), user tetap harus bisa logout secara lokal.
-     * 
-     * @return Flow<Resource<Boolean>> - True jika proses selesai
-     */
     override fun logout(): Flow<Resource<Boolean>> = flow {
+         // Logout logic stays almost same, no special error parsing needed usually
+         // But let's check duplication
         emit(Resource.Loading())
         try {
             val accessToken = tokenManager.getAccessToken() ?: ""
@@ -143,34 +94,29 @@ class AuthRepositoryImpl @Inject constructor(
             
             if (accessToken.isNotEmpty() && refreshToken.isNotEmpty()) {
                 val response = remoteDataSource.logout(accessToken, refreshToken)
+                tokenManager.clearSession() // Always clear
+                userDao.clearProfile() // Clear profile cache
+                userDao.clearAll() // Clear other user data
+                
                 if (response.isSuccessful) {
-                     // Skenario Ideal: Server sukses blacklist token -> Hapus lokal
-                     tokenManager.clearSession()
                      emit(Resource.Success(true))
                 } else {
-                     // Skenario Server Error (misal 500): Tetap hapus lokal demi keamanan/UX
-                     tokenManager.clearSession()
                      emit(Resource.Error(response.message()))
                 }
             } else {
-                 // Token sudah tidak ada (mungkin sudah terhapus): Anggap sukses logout
                  tokenManager.clearSession()
+                 userDao.clearProfile()
+                 userDao.clearAll()
                  emit(Resource.Success(true))
             }
         } catch (e: Exception) {
-            // Skenario Network Error (Offline): Tetap paksa logout lokal
             tokenManager.clearSession()
+            userDao.clearProfile()
+            userDao.clearAll()
             emit(Resource.Error(e.message ?: "Logout error"))
         }
     }.flowOn(Dispatchers.IO)
-    /**
-     * Implementasi Registrasi User Baru.
-     * 
-     * @param username Username yang diinginkan
-     * @param email Email valid
-     * @param password Password
-     * @return Flow<Resource<Boolean>> - True jika sukses, False/Error jika gagal.
-     */
+
     override fun register(username: String, email: String, password: String): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
@@ -181,28 +127,7 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && body?.success == true) {
                 emit(Resource.Success(true))
             } else {
-                val errorBody = response.errorBody()?.string()
-                if (errorBody != null) {
-                    try {
-                        val type = object : com.google.gson.reflect.TypeToken<com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData>>() {}.type
-                        val errorResponse: com.example.loanova_android.core.base.ApiResponse<com.example.loanova_android.data.model.dto.ValidationErrorData> = gson.fromJson(errorBody, type)
-                        
-                        if (errorResponse.data?.errors != null && errorResponse.data.errors.isNotEmpty()) {
-                             val errorsJson = gson.toJson(errorResponse.data.errors)
-                             emit(Resource.Error("VALIDATION_ERROR:$errorsJson"))
-                             return@flow
-                        } else {
-                             val msg = if (errorResponse.message.isNotEmpty()) errorResponse.message else response.message()
-                             emit(Resource.Error(msg))
-                             return@flow
-                        }
-                    } catch (e: Exception) {
-                        // ignore and fallthrough
-                    }
-                }
-                val errorMessage = body?.message ?: response.message()
-                val finalMsg = if (errorMessage.isBlank()) "Terjadi kesalahan (Kode: ${response.code()})" else errorMessage
-                emit(Resource.Error(finalMsg))
+                emit(parseError(response))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))

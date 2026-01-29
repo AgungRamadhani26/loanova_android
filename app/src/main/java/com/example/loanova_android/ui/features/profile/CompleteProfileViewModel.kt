@@ -26,7 +26,18 @@ data class CompleteProfileUiState(
     val isLoading: Boolean = false,
     val success: UserProfileResponse? = null,
     val error: String? = null,
-    val fieldErrors: Map<String, String>? = null
+    val fieldErrors: Map<String, String>? = null,
+    
+    // Form Data
+    val fullName: String = "",
+    val phoneNumber: String = "",
+    val userAddress: String = "",
+    val nik: String = "",
+    val birthDate: String = "",
+    val npwpNumber: String = "",
+    val ktpPhoto: File? = null,
+    val profilePhoto: File? = null,
+    val npwpPhoto: File? = null
 )
 
 

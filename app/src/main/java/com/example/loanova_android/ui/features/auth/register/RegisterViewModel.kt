@@ -55,12 +55,19 @@ class RegisterViewModel @Inject constructor(
                             val rawMsg = resource.message ?: "Registrasi gagal"
                             val msg = if (rawMsg.isBlank()) "Registrasi gagal" else rawMsg
                             
-                            if (msg.startsWith("VALIDATION_ERROR:")) {
+                            // Updated to match BaseRepository format: "VALIDATION_ERROR||Message||JSON"
+                            if (msg.startsWith("VALIDATION_ERROR||")) {
                                 try {
-                                    val json = msg.substring("VALIDATION_ERROR:".length)
-                                    val type = object : TypeToken<Map<String, String>>() {}.type
-                                    val errors: Map<String, String> = gson.fromJson(json, type)
-                                    _uiState.update { it.copy(isLoading = false, error = "Validasi gagal", fieldErrors = errors) }
+                                    val parts = msg.split("||")
+                                    if (parts.size >= 3) {
+                                        val backendMsg = parts[1]
+                                        val json = parts[2]
+                                        val type = object : TypeToken<Map<String, String>>() {}.type
+                                        val errors: Map<String, String> = gson.fromJson(json, type)
+                                        _uiState.update { it.copy(isLoading = false, error = backendMsg, fieldErrors = errors) }
+                                    } else {
+                                        _uiState.update { it.copy(isLoading = false, error = msg, fieldErrors = null) }
+                                    }
                                 } catch (e: Exception) {
                                     _uiState.update { it.copy(isLoading = false, error = "Terjadi kesalahan validasi", fieldErrors = null) }
                                 }

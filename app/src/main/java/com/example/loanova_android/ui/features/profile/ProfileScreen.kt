@@ -48,6 +48,7 @@ fun ProfileScreen(
     padding: PaddingValues,
     onLogout: () -> Unit,
     onNavigateToCompleteProfile: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.collectAsState().value
@@ -82,7 +83,11 @@ fun ProfileScreen(
                 onNavigateToCompleteProfile = onNavigateToCompleteProfile
             )
         } else if (uiState.userProfile != null) {
-            FullProfileState(profile = uiState.userProfile, onLogout = { viewModel.logout(); onLogout() })
+            FullProfileState(
+                profile = uiState.userProfile, 
+                onLogout = { viewModel.logout(); onLogout() },
+                onEditProfile = onNavigateToEditProfile
+            )
         } else {
             // Error State
             Column(
@@ -231,7 +236,11 @@ fun BenefitItem(text: String) {
 }
 
 @Composable
-fun FullProfileState(profile: UserProfileResponse, onLogout: () -> Unit) {
+fun FullProfileState(
+    profile: UserProfileResponse, 
+    onLogout: () -> Unit,
+    onEditProfile: () -> Unit
+) {
     LazyColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize()

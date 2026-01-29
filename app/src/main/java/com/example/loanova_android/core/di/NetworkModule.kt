@@ -107,4 +107,22 @@ object NetworkModule {
     fun provideUserProfileApi(retrofit: Retrofit): UserProfileApi {
         return retrofit.create(UserProfileApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideImageLoader(
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
+    ): coil.ImageLoader {
+        return coil.ImageLoader.Builder(context)
+            .okHttpClient(okHttpClient)
+            .diskCache {
+                coil.disk.DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02) // 2% of disk space
+                    .build()
+            }
+            .respectCacheHeaders(false) // Cache images even if headers say otherwise (for offline support)
+            .build()
+    }
 }

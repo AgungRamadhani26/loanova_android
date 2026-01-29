@@ -6,20 +6,14 @@ import dagger.hilt.android.HiltAndroidApp
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import javax.inject.Inject
-import okhttp3.OkHttpClient
 
 @HiltAndroidApp
 class MyApplication : Application(), ImageLoaderFactory {
 
     @Inject
-    lateinit var okHttpClient: OkHttpClient
+    lateinit var imageLoader: ImageLoader
 
-    override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
-            .okHttpClient(okHttpClient)
-            .crossfade(true)
-            .build()
-    }
+    override fun newImageLoader(): ImageLoader = imageLoader
 
     override fun onCreate() {
         super.onCreate()
