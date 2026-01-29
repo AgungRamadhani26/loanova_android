@@ -131,7 +131,7 @@ class UserProfileRepositoryImpl @Inject constructor(
                 localDataSource.insertProfile(entity)
                 emit(Resource.Success(body.data))
             } else {
-                emit(parseError(response))
+                emit(parseError<ApiResponse<UserProfileResponse>, UserProfileResponse>(response))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Terjadi kesalahan koneksi"))

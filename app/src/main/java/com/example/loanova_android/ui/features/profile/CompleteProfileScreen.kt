@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -511,7 +513,7 @@ fun LoanovaTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     readOnly: Boolean = false
 ) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+    Column(modifier = Modifier.padding(vertical = 0.dp)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -553,63 +555,64 @@ fun LoanovaTextField(
 
 @Composable
 fun FileUploadRow(label: String, uri: Uri?, error: String? = null, onClick: () -> Unit) {
-    Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() },
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF8FAFC)),
-            elevation = CardDefaults.cardElevation(0.dp),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp, 
-                color = if (error != null) MaterialTheme.colorScheme.error else Color.LightGray.copy(alpha = 0.5f)
-            )
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF8FAFC)),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp, 
+            color = if (error != null) MaterialTheme.colorScheme.error else Color.LightGray.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                 modifier = Modifier
+                    .size(40.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else LoanovaBlue.copy(alpha = 0.1f)),
+                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(androidx.compose.foundation.shape.CircleShape)
-                        .background(if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else LoanovaBlue.copy(alpha = 0.1f)),
-                     contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Upload, 
-                        contentDescription = null, 
-                        tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        text = label, 
-                        fontWeight = FontWeight.SemiBold, 
-                        fontSize = 14.sp,
-                        color = if (error != null) MaterialTheme.colorScheme.error else Color.Unspecified
-                    )
-                    Text(
-                        text = if (uri != null) "File Terpilih" else "Belum ada file",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (uri != null) LoanovaBlue else Color.Gray,
-                        fontWeight = if (uri != null) FontWeight.Bold else FontWeight.Normal
-                    )
+                Icon(
+                    imageVector = Icons.Outlined.UploadFile, 
+                    contentDescription = null, 
+                    tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label, 
+                    fontWeight = FontWeight.SemiBold, 
+                    fontSize = 14.sp,
+                    color = if (error != null) MaterialTheme.colorScheme.error else Color.Unspecified
+                )
+                if (uri != null) {
+                    Text("File Terpilih", style = MaterialTheme.typography.bodySmall, color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("Klik untuk upload foto", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
+            if (uri != null) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+            }
         }
-        if (error != null) {
-            Text(
-                text = "# $error",
-                color = Color(0xFFEF4444),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
-        }
+    }
+    if (error != null) {
+        Text(
+            text = "# $error",
+            color = Color(0xFFEF4444),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+        )
     }
 }
 
