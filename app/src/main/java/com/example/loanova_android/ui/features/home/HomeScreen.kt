@@ -56,14 +56,7 @@ fun HomeScreen(
     }
 
     Scaffold(
-        topBar = {
-            HomeHeader(
-                isLoggedIn = uiState.isLoggedIn,
-                username = uiState.username,
-                onLogin = onNavigateToLogin,
-                onLogout = { viewModel.logout() }
-            )
-        },
+
         bottomBar = {
             LoanovaBottomNavigation(
                 selectedTab = selectedTab,
@@ -96,6 +89,7 @@ fun HomeScreen(
                 onLogout = { 
                     viewModel.logout() 
                 },
+                onNavigateBack = { selectedTab = 0 },
                 onNavigateToCompleteProfile = onNavigateToCompleteProfile,
                 onNavigateToEditProfile = onNavigateToEditProfile,
                 onNavigateToChangePassword = onNavigateToChangePassword
@@ -222,27 +216,23 @@ fun HomeHeader(
     onLogin: () -> Unit,
     onLogout: () -> Unit
 ) {
-    CenterAlignedTopAppBar(
+    TopAppBar(
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.AccountBalance,
-                    contentDescription = null,
-                    tint = LoanovaBlue,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            Column {
                 Text(
-                    text = "LOANOVA",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        color = LoanovaBlue
-                    )
+                    text = "Halo,",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.Gray
+                )
+                Text(
+                    text = if (isLoggedIn) (username ?: "User") else "Pengunjung",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
                 )
             }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.White
         ),
         actions = {

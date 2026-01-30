@@ -54,6 +54,7 @@ import com.example.loanova_android.ui.theme.LoanovaBackground
 fun ProfileScreen(
     padding: PaddingValues,
     onLogout: () -> Unit,
+    onNavigateBack: () -> Unit,
     onNavigateToCompleteProfile: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
@@ -94,6 +95,7 @@ fun ProfileScreen(
             FullProfileState(
                 profile = uiState.userProfile, 
                 onLogout = { viewModel.logout(); onLogout() },
+                onNavigateBack = onNavigateBack,
                 onEditProfile = onNavigateToEditProfile,
                 onChangePassword = onNavigateToChangePassword
             )
@@ -113,6 +115,7 @@ fun ProfileScreen(
 fun FullProfileState(
     profile: UserProfileResponse, 
     onLogout: () -> Unit,
+    onNavigateBack: () -> Unit,
     onEditProfile: () -> Unit,
     onChangePassword: () -> Unit
 ) {
@@ -130,7 +133,7 @@ fun FullProfileState(
                 imageVector = Icons.Default.ArrowBack, // Or Menu if it was a drawer
                 contentDescription = null,
                 tint = Color.Black,
-                modifier = Modifier.size(24.dp).clickable { /* Handle Nav Back if needed, or remove */ }
+                modifier = Modifier.size(24.dp).clickable { onNavigateBack() }
             )
             Text(
                 text = "Profile",
