@@ -106,6 +106,7 @@ fun CompleteProfileScreen(
     
     // Temp URI: Menyimpan lokasi sementara foto hasil jepretan kamera sebelum diproses
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraPath by remember { mutableStateOf<String?>(null) }
 
     /**
      * Membuat URI sementara untuk menyimpan hasil foto kamera.
@@ -117,6 +118,7 @@ fun CompleteProfileScreen(
             createNewFile()
             deleteOnExit()
         }
+        tempCameraPath = tempFile.absolutePath
         return FileProvider.getUriForFile(
             Objects.requireNonNull(context),
             "com.example.loanova_android.provider", // Hardcoded to match Manifest
@@ -137,13 +139,23 @@ fun CompleteProfileScreen(
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture()) { success ->
-        if (success && tempCameraUri != null) {
-            when(currentImageTarget) {
-                "ktp" -> ktpUri = tempCameraUri
-                "profile" -> profileUri = tempCameraUri
-                "npwp" -> npwpUri = tempCameraUri
+        if (success && tempCameraPath != null) {
+            val rawFile = File(tempCameraPath!!)
+            
+            // Process (Rotate & Compress) Immediately using Path
+            val processedFile = com.example.loanova_android.core.common.ImageUtils.processFile(rawFile)
+            
+            if (processedFile != null) {
+                val newUri = Uri.fromFile(processedFile)
+                when(currentImageTarget) {
+                    "ktp" -> ktpUri = newUri
+                    "profile" -> profileUri = newUri
+                    "npwp" -> npwpUri = newUri
+                }
+                viewModel.clearError()
+            } else {
+               Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
             }
-            viewModel.clearError()
         }
     }
 

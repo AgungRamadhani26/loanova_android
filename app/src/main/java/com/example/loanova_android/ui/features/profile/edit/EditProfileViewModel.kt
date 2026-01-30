@@ -42,10 +42,14 @@ class EditProfileViewModel @Inject constructor(
                             userAddress = profile.userAddress,
                             nik = profile.nik,
                             birthDate = profile.birthDate,
-                            npwpNumber = profile.npwpNumber ?: ""
+                            npwpNumber = profile.npwpNumber ?: "",
                             // Note: Photos are not loaded back into "File" objects because they are URLs now.
                             // The UI should show existing photos if no new photo is selected. 
                             // In this simple implementation, we assume user re-uploads if they want to change.
+                            
+                            // Clear error (e.g. Offline Alert) when we get fresh data
+                            error = null,
+                            fieldErrors = emptyMap()
                         )
                     }
                 }
@@ -95,12 +99,17 @@ class EditProfileViewModel @Inject constructor(
                     }
                     is Resource.Error -> {
                         val messageFn = result.message ?: "Unknown Error"
-                        val errors = parseValidationErrors(messageFn)
                         
-                        if (errors.isNotEmpty()) {
-                            _uiState.update { it.copy(isLoading = false, error = "Validasi Gagal", fieldErrors = errors) }
+                        if (messageFn == "OFFLINE_QUEUED") {
+                            // Offline Success Case
+                            _uiState.update { it.copy(isLoading = false, error = "Koneksi terputus. Data disimpan dan akan diupload saat online.", fieldErrors = emptyMap()) }
                         } else {
-                            _uiState.update { it.copy(isLoading = false, error = messageFn) }
+                             val errors = parseValidationErrors(messageFn)
+                             if (errors.isNotEmpty()) {
+                                 _uiState.update { it.copy(isLoading = false, error = "Validasi Gagal", fieldErrors = errors) }
+                             } else {
+                                 _uiState.update { it.copy(isLoading = false, error = messageFn) }
+                             }
                         }
                     }
                 }

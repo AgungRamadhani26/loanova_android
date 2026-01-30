@@ -8,12 +8,20 @@ import coil.ImageLoaderFactory
 import javax.inject.Inject
 
 @HiltAndroidApp
-class MyApplication : Application(), ImageLoaderFactory {
+class MyApplication : Application(), ImageLoaderFactory, androidx.work.Configuration.Provider {
 
     @Inject
     lateinit var imageLoader: ImageLoader
 
+    @Inject
+    lateinit var workerFactory: androidx.hilt.work.HiltWorkerFactory
+
     override fun newImageLoader(): ImageLoader = imageLoader
+
+    override val workManagerConfiguration: androidx.work.Configuration
+        get() = androidx.work.Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()

@@ -2,6 +2,7 @@ package com.example.loanova_android.ui.features.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.domain.repository.IUserProfileRepository
@@ -52,11 +53,56 @@ data class CompleteProfileUiState(
 @HiltViewModel
 class CompleteProfileViewModel @Inject constructor(
     private val repository: IUserProfileRepository,
-    private val gson: com.google.gson.Gson
+    private val gson: com.google.gson.Gson,
+    private val workManager: androidx.work.WorkManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CompleteProfileUiState())
     val uiState: StateFlow<CompleteProfileUiState> = _uiState.asStateFlow()
+
+    init {
+        // 1. Observe DB (Existing) - Works if cache exists
+        viewModelScope.launch {
+            repository.getMyProfile().collect { result ->
+                if (result is Resource.Success && result.data != null) {
+                    onProfileSynced(result.data)
+                }
+            }
+        }
+
+        // 2. Observe Worker (New) - Works even if cache was empty and DB flow closed
+        viewModelScope.launch {
+            workManager.getWorkInfosByTagFlow("PROFILE_SYNC_WORK")
+                .collect { workInfos ->
+                    val successWork = workInfos.find { it.state == androidx.work.WorkInfo.State.SUCCEEDED }
+                    if (successWork != null) {
+                        // Worker finished successfully! Force UI update.
+                        // We can manually trigger success or fetch data again.
+                        // Since Worker wrote to DB, let's try fetching fresh data explicitly
+                        // or just tell UI "We are good".
+                         repository.getMyProfile().collect { result ->
+                            if (result is Resource.Success && result.data != null) {
+                                onProfileSynced(result.data)
+                            }
+                        }
+                    }
+                }
+        }
+    }
+    
+    private fun onProfileSynced(data: UserProfileResponse) {
+        _uiState.update { currentState ->
+            if (currentState.error == "Koneksi terputus. Data disimpan dan akan diupload saat online.") {
+                 currentState.copy(
+                    isLoading = false,
+                    error = null,
+                    success = data
+                )
+            } else {
+                currentState
+            }
+        }
+    }
 
     /**
      * Mengirim data profil ke server.
@@ -70,15 +116,23 @@ class CompleteProfileViewModel @Inject constructor(
             repository.completeProfile(request).collect { result ->
                 when (result) {
                     is Resource.Loading -> _uiState.update { it.copy(isLoading = true, error = null) }
-                    is Resource.Success -> _uiState.update { it.copy(isLoading = false, success = result.data) }
+                    is Resource.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                success = result.data, 
+                                error = null 
+                            )
+                        }
+                    }
                     is Resource.Error -> {
                          val rawMsg = result.message ?: "Gagal melengkapi profil"
                          val msg = if (rawMsg.isBlank()) "Gagal melengkapi profil" else rawMsg
                          
-                         // LOGIC KHUSUS: Parsing Error Validasi dari Backend
-                         // Format Backend: "VALIDATION_ERROR||Pesan Umum||JSON_FIELD_ERRORS"
-                         // Contoh: "VALIDATION_ERROR||Data tidak valid||{\"phoneNumber\":\"Sudah dipakai\"}"
-                        if (msg.startsWith("VALIDATION_ERROR")) {
+                        if (msg == "OFFLINE_QUEUED") {
+                            // Offline Success Case
+                            _uiState.update { it.copy(isLoading = false, error = "Koneksi terputus. Data disimpan dan akan diupload saat online.", fieldErrors = null) }
+                        } else if (msg.startsWith("VALIDATION_ERROR")) {
                             try {
                                 val parts = msg.split("||")
                                 if (parts.size >= 3) {

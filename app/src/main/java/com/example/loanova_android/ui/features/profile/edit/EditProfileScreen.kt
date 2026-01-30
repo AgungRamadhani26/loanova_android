@@ -56,6 +56,7 @@ fun EditProfileScreen(
     
     // --- Camera & Gallery Logic (Using ImageUtils & Permission Check) ---
     var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var tempPhotoPath by remember { mutableStateOf<String?>(null) }
     var currentPhotoTarget by remember { mutableStateOf<String?>(null) } // "KTP", "PROFILE", "NPWP"
     var showSourceDialog by remember { mutableStateOf(false) }
 
@@ -64,6 +65,7 @@ fun EditProfileScreen(
             createNewFile()
             deleteOnExit()
         }
+        tempPhotoPath = tempFile.absolutePath
         return FileProvider.getUriForFile(
             Objects.requireNonNull(context),
             "${context.packageName}.provider",
@@ -74,14 +76,16 @@ fun EditProfileScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success && tempPhotoUri != null && currentPhotoTarget != null) {
-            // Use ImageUtils.uriToFile which now handles everything including compression
-             val file = ImageUtils.uriToFile(context, tempPhotoUri!!)
-             if (file != null) {
+        if (success && tempPhotoPath != null && currentPhotoTarget != null) {
+            val rawFile = File(tempPhotoPath!!)
+            // Process (Rotate & Compress) Immediately
+            val processedFile = ImageUtils.processFile(rawFile)
+             
+             if (processedFile != null) {
                  when (currentPhotoTarget) {
-                     "KTP" -> viewModel.onKtpPhotoSelected(file)
-                     "PROFILE" -> viewModel.onProfilePhotoSelected(file)
-                     "NPWP" -> viewModel.onNpwpPhotoSelected(file)
+                     "KTP" -> viewModel.onKtpPhotoSelected(processedFile)
+                     "PROFILE" -> viewModel.onProfilePhotoSelected(processedFile)
+                     "NPWP" -> viewModel.onNpwpPhotoSelected(processedFile)
                  }
              } else {
                  Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
