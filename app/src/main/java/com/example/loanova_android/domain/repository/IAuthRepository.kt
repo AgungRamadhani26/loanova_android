@@ -10,6 +10,7 @@ import com.example.loanova_android.domain.model.User
 
 import kotlinx.coroutines.flow.Flow
 import com.example.loanova_android.core.common.Resource
+import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 
 /**
  * IAuthRepository - Interface Repository untuk operasi autentikasi.
@@ -55,4 +56,5 @@ interface IAuthRepository {
     fun login(username: String, password: String, fcmToken: String? = null): Flow<Resource<User>>
     fun logout(): Flow<Resource<Boolean>>
     fun register(username: String, email: String, password: String): Flow<Resource<Boolean>>
+    fun changePassword(request: ChangePasswordRequest): Flow<Resource<String>>
 }

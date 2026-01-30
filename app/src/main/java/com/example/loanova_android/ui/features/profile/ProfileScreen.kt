@@ -56,6 +56,7 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onNavigateToCompleteProfile: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.collectAsState().value
@@ -93,7 +94,8 @@ fun ProfileScreen(
             FullProfileState(
                 profile = uiState.userProfile, 
                 onLogout = { viewModel.logout(); onLogout() },
-                onEditProfile = onNavigateToEditProfile
+                onEditProfile = onNavigateToEditProfile,
+                onChangePassword = onNavigateToChangePassword
             )
         } else {
              Box(modifier = Modifier.fillMaxSize()) {
@@ -111,7 +113,8 @@ fun ProfileScreen(
 fun FullProfileState(
     profile: UserProfileResponse, 
     onLogout: () -> Unit,
-    onEditProfile: () -> Unit
+    onEditProfile: () -> Unit,
+    onChangePassword: () -> Unit
 ) {
     // Top Bar (Custom)
     Column(modifier = Modifier.fillMaxSize()) {
@@ -135,12 +138,21 @@ fun FullProfileState(
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-            Icon(
-                imageVector = Icons.Outlined.Logout,
-                contentDescription = "Logout",
-                tint = Color(0xFFEF4444),
-                modifier = Modifier.size(24.dp).clickable { onLogout() }
-            )
+            Row {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = "Ganti Password",
+                    tint = LoanovaBlue,
+                    modifier = Modifier.size(24.dp).clickable { onChangePassword() }
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(
+                    imageVector = Icons.Outlined.Logout,
+                    contentDescription = "Logout",
+                    tint = Color(0xFFEF4444),
+                    modifier = Modifier.size(24.dp).clickable { onLogout() }
+                )
+            }
         }
 
         LazyColumn(
@@ -356,6 +368,50 @@ fun FullProfileState(
                 }
                 AnimatedVisibility(visible = selectedTab == 1, enter = fadeIn(), exit = fadeOut()) {
                     DokumenList(profile)
+                }
+            }
+
+            // 4. Security Section
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        text = "Keamanan Akun",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { onChangePassword() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(Color(0xFFFFF4E5), CircleShape), // Light Orange
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFFF9800))
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Ubah Kata Sandi", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.Black)
+                                Text(
+                                    text = "Amankan akun Anda secara berkala", 
+                                    style = MaterialTheme.typography.bodySmall, 
+                                    color = Color.Gray
+                                )
+                            }
+                            Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray)
+                        }
+                    }
                 }
             }
         }

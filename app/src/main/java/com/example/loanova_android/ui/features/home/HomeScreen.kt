@@ -36,6 +36,7 @@ fun HomeScreen(
     onNavigateToLogin: () -> Unit = {},
     onNavigateToCompleteProfile: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    onNavigateToChangePassword: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -96,7 +97,8 @@ fun HomeScreen(
                     viewModel.logout() 
                 },
                 onNavigateToCompleteProfile = onNavigateToCompleteProfile,
-                onNavigateToEditProfile = onNavigateToEditProfile
+                onNavigateToEditProfile = onNavigateToEditProfile,
+                onNavigateToChangePassword = onNavigateToChangePassword
             )
             else -> Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Fitur Belum Tersedia / Placeholder")

@@ -65,6 +65,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToEditProfile = {
                     navController.navigate(Screen.EditProfile.route)
+                },
+                onNavigateToChangePassword = {
+                    navController.navigate(Screen.ChangePassword.route)
                 }
             )
         }
@@ -122,6 +125,20 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                }
+            )
+        }
+
+        composable(Screen.ChangePassword.route) {
+            com.example.loanova_android.ui.features.profile.password.ChangePasswordScreen(
+                onNavigateUp = {
+                    navController.popBackStack()
+                },
+                onNavigateToLogin = {
+                    // Logout success -> Go to Login and clear backstack
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true } // Clear everything
+                    }
                 }
             )
         }

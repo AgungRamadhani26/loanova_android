@@ -12,6 +12,7 @@ import com.example.loanova_android.data.model.dto.LoginRequest
 import com.example.loanova_android.data.model.dto.RefreshTokenRequest
 import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
+import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -98,4 +99,9 @@ interface AuthApi {
     fun refreshToken(
         @Body request: RefreshTokenRequest
     ): retrofit2.Call<ApiResponse<LoginResponse>>
+
+    @POST("api/auth/change-password")
+    suspend fun changePassword(
+        @Body request: ChangePasswordRequest
+    ): Response<ApiResponse<Void>>
 }

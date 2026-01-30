@@ -7,6 +7,9 @@ package com.example.loanova_android.data.repository
 // ============================================================================
 
 import com.example.loanova_android.data.model.dto.LoginRequest
+import com.example.loanova_android.data.model.dto.ChangePasswordRequest
+import com.example.loanova_android.data.model.dto.RegisterRequest
+import com.example.loanova_android.data.model.dto.RegisterResponse
 
 import com.example.loanova_android.data.remote.datasource.AuthRemoteDataSource
 import com.example.loanova_android.domain.model.User
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
 import com.example.loanova_android.core.base.BaseRepository
+import com.example.loanova_android.core.base.ApiResponse
 import javax.inject.Inject
 
 /**
@@ -120,17 +124,39 @@ class AuthRepositoryImpl @Inject constructor(
     override fun register(username: String, email: String, password: String): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
-            val request = com.example.loanova_android.data.model.dto.RegisterRequest(username, email, password)
+            val request = RegisterRequest(username, email, password)
             val response = remoteDataSource.register(request)
             val body = response.body()
 
             if (response.isSuccessful && body?.success == true) {
                 emit(Resource.Success(true))
             } else {
-                emit(parseError(response))
+                emit(parseError<ApiResponse<RegisterResponse>, Boolean>(response))
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Unknown Network Error"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    override fun changePassword(request: ChangePasswordRequest): Flow<Resource<String>> = flow {
+        emit(Resource.Loading())
+        try {
+            // We need to add changePassword to AuthRemoteDataSource as well.
+            // For now, let's see if we can access the api service directly or add it to DataSource.
+            // Best practice: Add to DataSource first.
+            val response = remoteDataSource.changePassword(request)
+            if (response.isSuccessful) {
+                 emit(Resource.Success("Password berhasil diubah. Silakan login kembali."))
+            } else {
+                 val errorMsg = parseError<ApiResponse<Void>, Void>(response)
+                 if (errorMsg is Resource.Error) {
+                      emit(Resource.Error(errorMsg.message ?: "Gagal mengubah password"))
+                 } else {
+                      emit(Resource.Error("Gagal mengubah password"))
+                 }
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
         }
     }.flowOn(Dispatchers.IO)
 }

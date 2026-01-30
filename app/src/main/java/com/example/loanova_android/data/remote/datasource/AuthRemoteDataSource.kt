@@ -10,6 +10,10 @@ import com.example.loanova_android.core.base.ApiResponse
 import com.example.loanova_android.data.model.dto.LoginResponse
 import com.example.loanova_android.data.model.dto.LoginRequest
 import com.example.loanova_android.data.model.dto.RefreshTokenRequest
+
+import com.example.loanova_android.data.model.dto.RegisterRequest
+import com.example.loanova_android.data.model.dto.RegisterResponse
+import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import com.example.loanova_android.data.remote.api.AuthApi
 import retrofit2.Response
 import javax.inject.Inject
@@ -69,7 +73,7 @@ class AuthRemoteDataSource @Inject constructor(
         return authApi.login(request)
     }
 
-    suspend fun register(request: com.example.loanova_android.data.model.dto.RegisterRequest): Response<ApiResponse<com.example.loanova_android.data.model.dto.RegisterResponse>> {
+    suspend fun register(request: RegisterRequest): Response<ApiResponse<RegisterResponse>> {
         return authApi.register(request)
     }
 
@@ -88,5 +92,9 @@ class AuthRemoteDataSource @Inject constructor(
              token = "Bearer $token",
              request = RefreshTokenRequest(refreshToken)
         )
+    }
+
+    suspend fun changePassword(request: ChangePasswordRequest): Response<ApiResponse<Void>> {
+        return authApi.changePassword(request)
     }
 }

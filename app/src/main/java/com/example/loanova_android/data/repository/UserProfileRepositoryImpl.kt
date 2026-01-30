@@ -208,6 +208,8 @@ class UserProfileRepositoryImpl @Inject constructor(
         }
     }
 
+
+
     private fun buildMultipartBody(request: UserProfileCompleteRequest): RequestBody {
         val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
 
