@@ -71,6 +71,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToActivePlafond = {
                     navController.navigate(Screen.ActivePlafond.route)
+                },
+                onNavigateToLoanApplication = {
+                    navController.navigate(Screen.LoanApplication.route)
                 }
             )
         }
@@ -153,5 +156,24 @@ fun AppNavigation(navController: NavHostController) {
                 }
             )
         }
+
+        // ====================================================================
+        // LOAN APPLICATION SCREEN
+        // Route: "loan_application"
+        // ====================================================================
+        composable(Screen.LoanApplication.route) {
+            com.example.loanova_android.ui.features.loan.LoanApplicationScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onSuccess = {
+                    // Navigate back to Home after successful submission
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }
+

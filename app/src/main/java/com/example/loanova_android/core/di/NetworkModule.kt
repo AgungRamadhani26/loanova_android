@@ -5,6 +5,8 @@ import com.chuckerteam.chucker.api.ChuckerCollector
 import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.chuckerteam.chucker.api.RetentionManager
 import com.example.loanova_android.data.remote.api.AuthApi
+import com.example.loanova_android.data.remote.api.BranchApi
+import com.example.loanova_android.data.remote.api.LoanApplicationApi
 import com.example.loanova_android.data.remote.api.PlafondApi
 import com.example.loanova_android.data.remote.api.UserProfileApi
 import com.google.gson.Gson
@@ -116,6 +118,18 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideBranchApi(retrofit: Retrofit): BranchApi {
+        return retrofit.create(BranchApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLoanApplicationApi(retrofit: Retrofit): LoanApplicationApi {
+        return retrofit.create(LoanApplicationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
         okHttpClient: OkHttpClient
@@ -132,3 +146,4 @@ object NetworkModule {
             .build()
     }
 }
+

@@ -39,7 +39,8 @@ fun HomeScreen(
     onNavigateToCompleteProfile: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
-    onNavigateToActivePlafond: () -> Unit = {}, // New callback
+    onNavigateToActivePlafond: () -> Unit = {},
+    onNavigateToLoanApplication: () -> Unit = {}, // New callback for loan application
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,7 +86,8 @@ fun HomeScreen(
                 padding = padding,
                 uiState = uiState,
                 onNavigateToLogin = onNavigateToLogin,
-                onNavigateToActivePlafond = onNavigateToActivePlafond
+                onNavigateToActivePlafond = onNavigateToActivePlafond,
+                onNavigateToLoanApplication = onNavigateToLoanApplication
             )
 
             3 -> ProfileScreen(
@@ -119,7 +121,8 @@ fun HomeContent(
     padding: PaddingValues,
     uiState: HomeUiState,
     onNavigateToLogin: () -> Unit,
-    onNavigateToActivePlafond: () -> Unit
+    onNavigateToActivePlafond: () -> Unit,
+    onNavigateToLoanApplication: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -134,6 +137,7 @@ fun HomeContent(
             QuickMenuSection(
                 onNavigateToLogin = onNavigateToLogin, 
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
+                onNavigateToLoanApplication = onNavigateToLoanApplication,
                 isLoggedIn = uiState.isLoggedIn
             ) 
         }
@@ -206,6 +210,7 @@ fun LoanovaBottomNavigation(
 fun QuickMenuSection(
     onNavigateToLogin: () -> Unit, 
     onNavigateToActivePlafond: () -> Unit,
+    onNavigateToLoanApplication: () -> Unit,
     isLoggedIn: Boolean
 ) {
     val items = listOf(
@@ -230,6 +235,12 @@ fun QuickMenuSection(
                         if (item.label == "Plafond") {
                             if (isLoggedIn) {
                                 onNavigateToActivePlafond()
+                            } else {
+                                onNavigateToLogin()
+                            }
+                        } else if (item.label == "Ajukan") {
+                            if (isLoggedIn) {
+                                onNavigateToLoanApplication()
                             } else {
                                 onNavigateToLogin()
                             }

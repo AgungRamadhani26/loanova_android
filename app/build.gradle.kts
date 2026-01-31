@@ -111,4 +111,7 @@ dependencies {
     implementation("androidx.hilt:hilt-work:1.2.0")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Location Services for GPS
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }
