@@ -110,6 +110,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideUserPlafondApi(retrofit: Retrofit): com.example.loanova_android.data.remote.api.UserPlafondApi {
+        return retrofit.create(com.example.loanova_android.data.remote.api.UserPlafondApi::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideImageLoader(
         @ApplicationContext context: Context,
         okHttpClient: OkHttpClient

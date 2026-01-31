@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,6 +39,7 @@ fun HomeScreen(
     onNavigateToCompleteProfile: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
+    onNavigateToActivePlafond: () -> Unit = {}, // New callback
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -81,7 +84,8 @@ fun HomeScreen(
             0 -> HomeContent(
                 padding = padding,
                 uiState = uiState,
-                onNavigateToLogin = onNavigateToLogin
+                onNavigateToLogin = onNavigateToLogin,
+                onNavigateToActivePlafond = onNavigateToActivePlafond
             )
 
             3 -> ProfileScreen(
@@ -114,7 +118,8 @@ fun ProfileDetailRow(label: String, value: String) {
 fun HomeContent(
     padding: PaddingValues,
     uiState: HomeUiState,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToActivePlafond: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -122,8 +127,17 @@ fun HomeContent(
             .padding(padding),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        item { HeroSection(onNavigateToLogin, uiState.isLoggedIn) }
-        item { FeatureSection() }
+        item { HeroSection(onNavigateToLogin, uiState.isLoggedIn, uiState.username) }
+        
+        // Quick Menu
+        item { 
+            QuickMenuSection(
+                onNavigateToLogin = onNavigateToLogin, 
+                onNavigateToActivePlafond = onNavigateToActivePlafond,
+                isLoggedIn = uiState.isLoggedIn
+            ) 
+        }
+        
         item { PlafondTitleSection() }
         
         if (uiState.isLoading) {
@@ -144,9 +158,10 @@ fun HomeContent(
         } else {
             item { PlafondListSection(uiState.plafonds) }
         }
-        
-        item { SecuritySection() }
-        item { StepsSection() }
+
+        // Moved FeatureSection here and refined it
+        // Moved FeatureSection here and refined it
+        item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
 
@@ -158,304 +173,225 @@ fun LoanovaBottomNavigation(
     NavigationBar(
         containerColor = Color.White,
         contentColor = LoanovaBlue,
-        windowInsets = WindowInsets(0, 0, 0, 0), // Remove default system bar padding to lower the bar
-        modifier = Modifier.height(80.dp)
+        tonalElevation = 8.dp,
+        modifier = Modifier.height(68.dp), // Reduced height to be less "upwards"
+        windowInsets = WindowInsets(0.dp) // Reset insets to align lower
     ) {
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Beranda") },
-            selected = selectedTab == 0,
-            onClick = { onTabSelected(0) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = LoanovaBlue,
-                selectedTextColor = LoanovaBlue,
-                indicatorColor = LoanovaBlue.copy(alpha = 0.1f)
-            )
+        val items = listOf(
+            "Beranda" to Icons.Default.Home,
+            "Pinjaman" to Icons.Default.CreditCard,
+            "Notifikasi" to Icons.Default.Notifications,
+            "Profil" to Icons.Default.Person
         )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.MonetizationOn, contentDescription = "Pinjaman") },
-            label = { Text("Pinjaman") },
-            selected = selectedTab == 1,
-            onClick = { onTabSelected(1) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = LoanovaBlue,
-                selectedTextColor = LoanovaBlue,
-                indicatorColor = LoanovaBlue.copy(alpha = 0.1f)
+
+        items.forEachIndexed { index, item ->
+            NavigationBarItem(
+                icon = { Icon(imageVector = item.second, contentDescription = item.first) },
+                label = { Text(text = item.first, style = MaterialTheme.typography.labelSmall) },
+                selected = selectedTab == index,
+                onClick = { onTabSelected(index) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = LoanovaBlue,
+                    selectedTextColor = LoanovaBlue,
+                    indicatorColor = LoanovaBlue.copy(alpha = 0.1f),
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray
+                )
             )
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Notifications, contentDescription = "Notifikasi") },
-            label = { Text("Notifikasi") },
-            selected = selectedTab == 2,
-            onClick = { onTabSelected(2) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = LoanovaBlue,
-                selectedTextColor = LoanovaBlue,
-                indicatorColor = LoanovaBlue.copy(alpha = 0.1f)
-            )
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profil") },
-            label = { Text("Profil") },
-            selected = selectedTab == 3,
-            onClick = { onTabSelected(3) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = LoanovaBlue,
-                selectedTextColor = LoanovaBlue,
-                indicatorColor = LoanovaBlue.copy(alpha = 0.1f)
-            )
-        )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeHeader(
-    isLoggedIn: Boolean,
-    username: String?,
-    onLogin: () -> Unit,
-    onLogout: () -> Unit
+fun QuickMenuSection(
+    onNavigateToLogin: () -> Unit, 
+    onNavigateToActivePlafond: () -> Unit,
+    isLoggedIn: Boolean
 ) {
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    text = "Halo,",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray
-                )
-                Text(
-                    text = if (isLoggedIn) (username ?: "User") else "Pengunjung",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.White
-        ),
-        actions = {
-            if (isLoggedIn) {
-                IconButton(onClick = onLogout) {
-                    Icon(
-                        imageVector = Icons.Default.ExitToApp,
-                        contentDescription = "Logout",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            } else {
-                IconButton(onClick = onLogin) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Login,
-                        contentDescription = "Login",
-                        tint = LoanovaBlue
-                    )
-                }
-            }
-        }
+    val items = listOf(
+        QuickMenuItem("Simulasi", Icons.Default.Calculate, Color(0xFF4CAF50)),
+        QuickMenuItem("Ajukan", Icons.Default.CreditScore, Color(0xFF2196F3)),
+        QuickMenuItem("Plafond", Icons.Default.AccountBalanceWallet, Color(0xFFFF9800)),
+        QuickMenuItem("Riwayat", Icons.Default.History, Color(0xFF9C27B0))
     )
-}
 
-@Composable
-fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean) {
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(LoanovaBlue, LoanovaLightBlue)
-                )
-            )
-            .padding(24.dp)
+            .padding(horizontal = 16.dp)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)
     ) {
-        Column {
-            Text(
-                text = if (isLoggedIn) "Solusi Finansial Anda" else "Ajukan Pinjaman dengan Mudah, Aman, dan Transparan",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp
-                )
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "Solusi finansial masa depan dengan teknologi verifikasi tercanggih. Proses 100% online.",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.White.copy(alpha = 0.8f)
-                )
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            if (!isLoggedIn) {
-                Button(
-                    onClick = onNavigateToLogin,
-                    colors = ButtonDefaults.buttonColors(containerColor = LoanovaGold),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "Ajukan Pinjaman Sekarang",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FeatureSection() {
-    val features = listOf(
-        FeatureItem("100% Online", "Tanpa tatap muka", Icons.Default.Smartphone),
-        FeatureItem("Cepat", "Persetujuan instan", Icons.Default.Bolt),
-        FeatureItem("Aman", "Enkripsi tingkat tinggi", Icons.Default.Lock),
-        FeatureItem("24/7 Support", "Bantuan kapan saja", Icons.Default.SupportAgent)
-    )
-
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Kenapa Memilih Kami?",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            features.forEach { feature ->
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(50.dp)
-                            .clip(CircleShape)
-                            .background(LoanovaBlue.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(imageVector = feature.icon, contentDescription = null, tint = LoanovaBlue)
+        items.forEach { item ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clickable { 
+                        if (item.label == "Plafond") {
+                            if (isLoggedIn) {
+                                onNavigateToActivePlafond()
+                            } else {
+                                onNavigateToLogin()
+                            }
+                        } else {
+                            // Placeholder for other items
+                            if (!isLoggedIn) onNavigateToLogin()
+                        }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = feature.title,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        textAlign = TextAlign.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(item.color.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.label,
+                        tint = item.color,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    fontSize = 12.sp,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
             }
         }
     }
 }
 
-@Composable
-fun PlafondTitleSection() {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "Pilihan Plafon Pinjaman",
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-        )
-        Text(
-            text = "Sesuaikan dengan kebutuhan finansial Anda",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
-    }
-}
-
-@Composable
-fun PlafondListSection(plafonds: List<Plafond>) {
-    if (plafonds.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-            Text("Belum ada data plafond", color = Color.Gray)
-        }
-        return
-    }
-
-    // Grid layout implementation manually (Row of 2 columns)
-    val chunked = plafonds.chunked(2)
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        chunked.forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                rowItems.forEach { plafond ->
-                    PlafondCard(plafond = plafond, modifier = Modifier.weight(1f))
-                }
-                // Fill empty space if odd number of items
-                if (rowItems.size < 2) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-    }
-}
+data class QuickMenuItem(val label: String, val icon: ImageVector, val color: Color)
 
 @Composable
 fun PlafondCard(plafond: Plafond, modifier: Modifier = Modifier) {
     val themeColor = getPlafondColor(plafond.name)
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(
+            themeColor,
+            LoanovaBlue
+        )
+    )
     
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), // Increased elevation
-        border = androidx.compose.foundation.BorderStroke(2.dp, themeColor) // Thicker, opaque border
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .background(themeColor.copy(alpha = 0.1f)) // Slightly more visible background tint
-                .padding(16.dp)
+                .background(gradientBrush)
         ) {
-            Text(
-                text = plafond.name, 
-                fontWeight = FontWeight.Black, // Extra bold
-                color = themeColor,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = plafond.description, 
-                style = MaterialTheme.typography.bodySmall, 
-                color = Color.Black.copy(alpha = 0.7f), // Darker text for readability
-                maxLines = 2
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "Max Limit", 
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), 
-                color = Color.Black.copy(alpha = 0.6f)
-            )
-            Text(
-                text = formatCurrency(plafond.maxAmount), 
-                fontWeight = FontWeight.Black, 
-                fontSize = 16.sp, // Reduced font size
-                color = themeColor
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Bunga ${plafond.interestRate}% / bulan", 
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), 
-                color = themeColor
-            )
+             // Background Decoration (Circles)
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.1f),
+                    center = androidx.compose.ui.geometry.Offset(x = size.width, y = 0f),
+                    radius = size.width * 0.5f
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    center = androidx.compose.ui.geometry.Offset(x = 0f, y = size.height),
+                    radius = size.width * 0.4f
+                )
+            }
+
+            Column(
+                modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp) // Reduced padding
+            ) {
+                // Header
+                Text(
+                    text = plafond.name, 
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium, // Smaller title
+                    fontSize = 14.sp
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = plafond.description, 
+                    style = MaterialTheme.typography.bodySmall, 
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.9f),
+                    maxLines = 2,
+                    minLines = 2,
+                    lineHeight = 16.sp,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Limit Info
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text(
+                            text = "Max Limit", 
+                            style = MaterialTheme.typography.labelSmall, 
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = formatCurrency(plafond.maxAmount), 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 14.sp, // Reduced font
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Interest Badge
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "Bunga ${plafond.interestRate}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp)) // Reduced spacer
+                
+                // Simulation Button (Styled white)
+                Button(
+                    onClick = { /* TODO: Navigate to Simulation */ },
+                    modifier = Modifier.fillMaxWidth().height(32.dp), // Height 32dp
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = themeColor 
+                    ),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("Lakukan Simulasi", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }
 
+
+
 fun getPlafondColor(name: String): Color {
     return when {
-        name.contains("Gold", ignoreCase = true) -> Color(0xFFFFB300) // Amber-600 (Brighter Gold)
-        name.contains("Silver", ignoreCase = true) -> Color(0xFF64748B) // Slate-500 (Distinct Silver/Grey)
-        name.contains("Bronze", ignoreCase = true) -> Color(0xFFD2691E) // Chocolate (Vibrant Bronze)
-        name.contains("Platinum", ignoreCase = true) -> Color(0xFF334155) // Slate-700 (Strong Dark Grey)
-        name.contains("Red", ignoreCase = true) -> Color(0xFFEF4444) // Red-500 (Bright Red)
-        name.contains("Black", ignoreCase = true) -> Color(0xFF000000)
+        name.contains("Gold", ignoreCase = true) -> Color(0xFFFFC107) // Amber 500 (Bright Gold)
+        name.contains("Silver", ignoreCase = true) -> Color(0xFF9E9E9E) // Grey 500
+        name.contains("Bronze", ignoreCase = true) -> Color(0xFFD84315) // Deep Orange 800
+        name.contains("Platinum", ignoreCase = true) -> Color(0xFF00BCD4) // Cyan 500 (Diamond Blue)
+        name.contains("Red", ignoreCase = true) -> Color(0xFFF44336) // Red 500
+        name.contains("Black", ignoreCase = true) -> Color(0xFF212121) // Grey 900
         else -> LoanovaBlue
     }
 }
@@ -466,84 +402,90 @@ fun formatCurrency(amount: java.math.BigDecimal): String {
     return format.format(amount).replace("Rp", "Rp ")
 }
 
+
+
 @Composable
-fun SecuritySection() {
+fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: String? = null) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1E293B))
-            .padding(20.dp)
+            .background(Brush.horizontalGradient(listOf(LoanovaBlue, LoanovaLightBlue)))
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.VerifiedUser,
-                contentDescription = null,
-                tint = Color.Cyan,
-                modifier = Modifier.size(40.dp)
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = "Selamat Datang di Loanova",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = "Aman & Terpercaya",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Diawasi oleh OJK dan menggunakan enkripsi AES-256 bit.",
-                    color = Color.LightGray,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Brief explanation of advantages
+            Text(
+                text = "Solusi keuangan digital yang Cepat, Aman, dan 100% Online.",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Nikmati kemudahan akses finansial kapan saja dengan layanan Support 24/7 terpercaya.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.9f),
+                lineHeight = 20.sp
+            )
 
-@Composable
-fun StepsSection() {
-    val steps = listOf(
-        "Daftar Akun",
-        "Lengkapi Profil",
-        "Pilih Plafon",
-        "Dana Cair"
-    )
-
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = "4 Langkah Mudah",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            steps.forEachIndexed { index, title ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
+            if (!isLoggedIn) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Button(
+                    onClick = onNavigateToLogin,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(LoanovaBlue),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "${index + 1}", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelSmall,
-                        textAlign = TextAlign.Center
-                    )
+                    Text("Masuk Sekarang", color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = LoanovaBlue)
                 }
             }
         }
     }
 }
 
-data class FeatureItem(val title: String, val desc: String, val icon: ImageVector)
+@Composable
+fun PlafondTitleSection() {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(
+            text = "Pilihan Pinjaman",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        )
+        Text(
+            text = "Sesuaikan dengan kebutuhan Anda",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+    }
+}
+
+@Composable
+fun PlafondListSection(plafonds: List<Plafond>) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        if (plafonds.isEmpty()) {
+             // Optional: Show empty state
+        } else {
+            plafonds.forEach { plafond ->
+                PlafondCard(
+                    plafond = plafond,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp) // Extra padding to make it narrower than Hero
+                        .padding(bottom = 12.dp)
+                )
+            }
+        }
+    }
+}
+
+// FeatureSection, SecuritySection, StepsSection removed as per user request
 

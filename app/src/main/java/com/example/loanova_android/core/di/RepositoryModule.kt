@@ -33,4 +33,10 @@ abstract class RepositoryModule {
     abstract fun bindUserProfileRepository(
         userProfileRepositoryImpl: UserProfileRepositoryImpl
     ): IUserProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserPlafondRepository(
+        userPlafondRepositoryImpl: com.example.loanova_android.data.repository.UserPlafondRepositoryImpl
+    ): com.example.loanova_android.domain.repository.IUserPlafondRepository
 }

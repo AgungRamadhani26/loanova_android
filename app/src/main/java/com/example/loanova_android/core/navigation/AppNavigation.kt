@@ -68,6 +68,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToChangePassword = {
                     navController.navigate(Screen.ChangePassword.route)
+                },
+                onNavigateToActivePlafond = {
+                    navController.navigate(Screen.ActivePlafond.route)
                 }
             )
         }
@@ -139,6 +142,14 @@ fun AppNavigation(navController: NavHostController) {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true } // Clear everything
                     }
+                }
+            )
+        }
+
+        composable(Screen.ActivePlafond.route) {
+            com.example.loanova_android.ui.features.plafon.ActivePlafondScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
