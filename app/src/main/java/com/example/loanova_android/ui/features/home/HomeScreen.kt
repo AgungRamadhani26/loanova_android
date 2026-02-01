@@ -51,12 +51,23 @@ fun HomeScreen(
     }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0: Home
+    var showProfileRequiredDialog by remember { mutableStateOf(false) }
 
     // Reset tab to Home when logged out
     LaunchedEffect(uiState.isLoggedIn) {
         if (!uiState.isLoggedIn && selectedTab != 0) {
             selectedTab = 0
         }
+    }
+
+    if (showProfileRequiredDialog) {
+        RestrictedActionDialog(
+            onDismiss = { showProfileRequiredDialog = false },
+            onCompleteProfile = {
+                showProfileRequiredDialog = false
+                onNavigateToCompleteProfile()
+            }
+        )
     }
 
     Scaffold(
@@ -67,8 +78,16 @@ fun HomeScreen(
                 onTabSelected = { index ->
                     if (index == 0) {
                         selectedTab = index
+                    } else if (index == 1 || index == 2) { // 1: Pinjaman, 2: Notifikasi
+                        if (!uiState.isLoggedIn) {
+                            onNavigateToLogin()
+                        } else if (!uiState.hasProfile) {
+                            showProfileRequiredDialog = true
+                        } else {
+                            selectedTab = index
+                        }
                     } else {
-                        // Restricted tabs
+                        // Restricted tabs (Profil)
                         if (uiState.isLoggedIn) {
                             selectedTab = index
                         } else {
@@ -87,7 +106,8 @@ fun HomeScreen(
                 uiState = uiState,
                 onNavigateToLogin = onNavigateToLogin,
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
-                onNavigateToLoanApplication = onNavigateToLoanApplication
+                onNavigateToLoanApplication = onNavigateToLoanApplication,
+                onProfileRequired = { showProfileRequiredDialog = true }
             )
 
             3 -> ProfileScreen(
@@ -122,7 +142,8 @@ fun HomeContent(
     uiState: HomeUiState,
     onNavigateToLogin: () -> Unit,
     onNavigateToActivePlafond: () -> Unit,
-    onNavigateToLoanApplication: () -> Unit
+    onNavigateToLoanApplication: () -> Unit,
+    onProfileRequired: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier
@@ -138,7 +159,9 @@ fun HomeContent(
                 onNavigateToLogin = onNavigateToLogin, 
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
                 onNavigateToLoanApplication = onNavigateToLoanApplication,
-                isLoggedIn = uiState.isLoggedIn
+                onProfileRequired = onProfileRequired,
+                isLoggedIn = uiState.isLoggedIn,
+                hasProfile = uiState.hasProfile
             ) 
         }
         
@@ -211,7 +234,9 @@ fun QuickMenuSection(
     onNavigateToLogin: () -> Unit, 
     onNavigateToActivePlafond: () -> Unit,
     onNavigateToLoanApplication: () -> Unit,
-    isLoggedIn: Boolean
+    onProfileRequired: () -> Unit,
+    isLoggedIn: Boolean,
+    hasProfile: Boolean
 ) {
     val items = listOf(
         QuickMenuItem("Simulasi", Icons.Default.Calculate, Color(0xFF4CAF50)),
@@ -233,19 +258,24 @@ fun QuickMenuSection(
                 modifier = Modifier
                     .clickable { 
                         if (item.label == "Plafond") {
-                            if (isLoggedIn) {
+                            if (!isLoggedIn) {
+                                onNavigateToLogin()
+                            } else if (!hasProfile) {
+                                onProfileRequired()
+                            } else {
                                 onNavigateToActivePlafond()
-                            } else {
-                                onNavigateToLogin()
                             }
-                        } else if (item.label == "Ajukan") {
-                            if (isLoggedIn) {
-                                onNavigateToLoanApplication()
-                            } else {
+                        } else if (item.label == "Ajukan" || item.label == "Riwayat") {
+                            if (!isLoggedIn) {
                                 onNavigateToLogin()
+                            } else if (!hasProfile) {
+                                onProfileRequired()
+                            } else {
+                                if (item.label == "Ajukan") onNavigateToLoanApplication()
+                                // else: Riwayat Feature Placeholder
                             }
                         } else {
-                            // Placeholder for other items
+                            // Placeholder for other items (Simulasi, etc)
                             if (!isLoggedIn) onNavigateToLogin()
                         }
                     }
@@ -500,3 +530,51 @@ fun PlafondListSection(plafonds: List<Plafond>) {
 
 // FeatureSection, SecuritySection, StepsSection removed as per user request
 
+@Composable
+fun RestrictedActionDialog(
+    onDismiss: () -> Unit,
+    onCompleteProfile: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Profil Belum Lengkap",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Text(
+                text = "Kamu harus melengkapi data diri (User Profile) terlebih dahulu sebelum bisa menggunakan fitur ini. Ini penting untuk proses verifikasi data kamu.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onCompleteProfile,
+                colors = ButtonDefaults.buttonColors(containerColor = LoanovaBlue),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Lengkapi Sekarang", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Nanti Saja", color = Color.Gray)
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        containerColor = Color.White
+    )
+}

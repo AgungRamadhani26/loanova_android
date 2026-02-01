@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.loanova_android.domain.usecase.profile.GetMyProfileUseCase
 import javax.inject.Inject
 
 data class HomeUiState(
@@ -20,13 +21,16 @@ data class HomeUiState(
     val plafonds: List<Plafond> = emptyList(),
     val error: String? = null,
     val isLoggedIn: Boolean = false,
-    val username: String? = null
+    val username: String? = null,
+    val hasProfile: Boolean = false,
+    val isProfileLoading: Boolean = false
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getPublicPlafondsUseCase: GetPublicPlafondsUseCase,
     private val logoutUseCase: LogoutUseCase,
+    private val getMyProfileUseCase: GetMyProfileUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -39,11 +43,48 @@ class HomeViewModel @Inject constructor(
     }
 
     fun checkLoginStatus() {
+        val isLoggedIn = tokenManager.isLoggedIn()
         _uiState.update {
             it.copy(
-                isLoggedIn = tokenManager.isLoggedIn(),
+                isLoggedIn = isLoggedIn,
                 username = tokenManager.getUsername()
             )
+        }
+        if (isLoggedIn) {
+            fetchProfileStatus()
+        } else {
+            _uiState.update { it.copy(hasProfile = false) }
+        }
+    }
+
+    private fun fetchProfileStatus() {
+        viewModelScope.launch {
+            getMyProfileUseCase.execute().collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isProfileLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        val profile = result.data
+                        val isComplete = profile != null && !profile.fullName.isNullOrBlank()
+                        _uiState.update { 
+                            it.copy(
+                                isProfileLoading = false, 
+                                hasProfile = isComplete 
+                            ) 
+                        }
+                    }
+                    is Resource.Error -> {
+                        // If 404 or profile not found, hasProfile = false
+                        _uiState.update { 
+                            it.copy(
+                                isProfileLoading = false, 
+                                hasProfile = false 
+                            ) 
+                        }
+                    }
+                }
+            }
         }
     }
 

@@ -61,6 +61,7 @@ data class LoanApplicationUiState(
     // Result
     val successMessage: String? = null,
     val errorMessage: String? = null,
+    val fieldErrors: Map<String, String>? = null,
     val submitResult: LoanApplicationResponse? = null
 )
 
@@ -72,7 +73,8 @@ class LoanApplicationViewModel @Inject constructor(
     private val getBranchesUseCase: GetBranchesUseCase,
     private val getPublicPlafondsUseCase: GetPublicPlafondsUseCase,
     private val getActivePlafondUseCase: GetActivePlafondUseCase,
-    private val submitLoanUseCase: SubmitLoanUseCase
+    private val submitLoanUseCase: SubmitLoanUseCase,
+    private val gson: com.google.gson.Gson
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(LoanApplicationUiState())
@@ -243,79 +245,88 @@ class LoanApplicationViewModel @Inject constructor(
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             errorMessage = null,
-            successMessage = null
+            successMessage = null,
+            fieldErrors = null
         )
     }
     
-    fun submitLoanApplication(
-        savingBookCoverFile: File,
-        payslipPhotoFile: File
-    ) {
-        val state = _uiState.value
-        
-        // Validations
-        if (state.activePlafond == null) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Plafond aktif tidak ditemukan")
-            return
-        }
-        if (state.selectedBranchId == null) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Pilih cabang terlebih dahulu")
-            return
-        }
-        // Plafond ID is auto-selected from active plafond
-        if (state.selectedPlafondId == null) {
-             _uiState.value = _uiState.value.copy(errorMessage = "Data plafond error")
-            return
-        }
-        
-        if (state.amount.isBlank()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Jumlah pinjaman wajib diisi")
-            return
-        }
-        
-        // Validate amount vs remaining limit
-        try {
-            val amountValue = BigDecimal(state.amount)
-            if (amountValue > state.maxAmount) {
-                 _uiState.value = _uiState.value.copy(errorMessage = "Jumlah pinjaman melebihi sisa limit plafond")
-                 return
-            }
-             if (amountValue < state.minAmount) {
-                 _uiState.value = _uiState.value.copy(errorMessage = "Jumlah pinjaman minimal 1 juta")
-                 return
-            }
-        } catch (e: Exception) {
-             _uiState.value = _uiState.value.copy(errorMessage = "Format jumlah pinjaman salah")
-             return
-        }
-
-        if (state.occupation.isBlank()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Pekerjaan wajib diisi")
-            return
-        }
-        if (state.rekeningNumber.isBlank()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Nomor rekening wajib diisi")
-            return
-        }
-        if (state.latitude == null || state.longitude == null) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Lokasi belum terdeteksi. Pastikan GPS aktif.")
-            return
-        }
-        
-        val request = LoanApplicationRequest(
-            branchId = state.selectedBranchId,
-            amount = state.amount,
-            tenor = state.tenor,
-            occupation = state.occupation,
-            companyName = state.companyName.ifBlank { null },
-            rekeningNumber = state.rekeningNumber,
-            latitude = state.latitude,
-            longitude = state.longitude,
-            savingBookCover = savingBookCoverFile,
-            payslipPhoto = payslipPhotoFile
-        )
-
+    fun submitLoanApplication(savingBookCover: File?, payslipPhoto: File?) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmitting = true, errorMessage = null, fieldErrors = null)
+            
+            val state = _uiState.value
+            val errors = mutableMapOf<String, String>()
+
+            // Frontend Validations
+            if (state.activePlafond == null) {
+                errors["plafond"] = "Plafond aktif tidak ditemukan"
+            }
+            if (state.selectedBranchId == null) {
+                errors["branchId"] = "Cabang wajib dipilih"
+            }
+            // Plafond ID is auto-selected from active plafond
+            if (state.selectedPlafondId == null) {
+                errors["plafondId"] = "Data plafond error"
+            }
+            
+            // Validate amount
+            try {
+                val amountValue = BigDecimal(state.amount)
+                if (amountValue <= BigDecimal.ZERO) {
+                    errors["amount"] = "Jumlah pinjaman harus lebih dari 0"
+                } else if (amountValue > state.maxAmount) {
+                    errors["amount"] = "Jumlah pinjaman melebihi sisa limit plafond"
+                } else if (amountValue < state.minAmount) {
+                    errors["amount"] = "Jumlah pinjaman minimal ${state.minAmount.toPlainString()}"
+                }
+            } catch (e: Exception) {
+                errors["amount"] = "Format jumlah pinjaman salah"
+            }
+
+            if (state.occupation.isBlank()) {
+                errors["occupation"] = "Pekerjaan wajib diisi"
+            }
+            if (state.rekeningNumber.isBlank()) {
+                errors["rekeningNumber"] = "Nomor rekening wajib diisi"
+            }
+            if (savingBookCover == null) {
+                errors["savingBookCover"] = "Cover buku tabungan wajib diunggah"
+            }
+            if (payslipPhoto == null) {
+                errors["payslipPhoto"] = "Slip gaji wajib diunggah"
+            }
+            if (state.latitude == null || state.longitude == null || (state.latitude == 0.0 && state.longitude == 0.0)) {
+                _uiState.value = _uiState.value.copy(
+                    isSubmitting = false,
+                    errorMessage = "Validasi gagal",
+                    locationError = "Izin lokasi diperlukan untuk mengajukan pinjaman",
+                    fieldErrors = errors.ifEmpty { null }
+                )
+                return@launch
+            }
+
+            if (errors.isNotEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    isSubmitting = false,
+                    errorMessage = "Validasi gagal",
+                    fieldErrors = errors
+                )
+                return@launch
+            }
+            
+            val request = LoanApplicationRequest(
+                branchId = state.selectedBranchId!!,
+                amount = state.amount,
+                tenor = state.tenor,
+                occupation = state.occupation,
+                companyName = if (state.companyName.isNullOrBlank()) null else state.companyName,
+                rekeningNumber = state.rekeningNumber,
+                latitude = state.latitude!!,
+                longitude = state.longitude!!,
+                savingBookCover = savingBookCover!!,
+                payslipPhoto = payslipPhoto!!
+            )
+            
             submitLoanUseCase(request).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
@@ -325,14 +336,37 @@ class LoanApplicationViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             isSubmitting = false,
                             successMessage = result.message ?: "Pengajuan berhasil disubmit!",
-                            submitResult = result.data
+                            submitResult = result.data,
+                            fieldErrors = null
                         )
                     }
                     is Resource.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            isSubmitting = false,
-                            errorMessage = result.message
-                        )
+                        val rawMsg = result.message ?: "Submit gagal"
+                        if (rawMsg.startsWith("VALIDATION_ERROR||")) {
+                            try {
+                                val parts = rawMsg.split("||")
+                                if (parts.size >= 3) {
+                                    val backendMsg = parts[1]
+                                    val json = parts[2]
+                                    val type = object : com.google.gson.reflect.TypeToken<Map<String, String>>() {}.type
+                                    val errorsFromApi: Map<String, String> = gson.fromJson(json, type)
+                                    _uiState.value = _uiState.value.copy(
+                                        isSubmitting = false, 
+                                        errorMessage = backendMsg, 
+                                        fieldErrors = errorsFromApi
+                                    )
+                                } else {
+                                     _uiState.value = _uiState.value.copy(isSubmitting = false, errorMessage = rawMsg)
+                                }
+                            } catch (e: Exception) {
+                                _uiState.value = _uiState.value.copy(isSubmitting = false, errorMessage = "Terjadi kesalahan validasi")
+                            }
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                isSubmitting = false,
+                                errorMessage = rawMsg
+                            )
+                        }
                     }
                 }
             }
