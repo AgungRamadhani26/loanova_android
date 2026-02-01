@@ -7,9 +7,11 @@ package com.example.loanova_android.ui.features.auth.login
 // ============================================================================
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -22,8 +24,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
@@ -42,6 +47,13 @@ import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
 import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.Loanova_androidTheme
+
+// Modern color palette for auth screens
+private val AuthPrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
+private val AuthSecondaryColor = Color(0xFF3B82F6)    // Bright Blue
+private val AuthAccentColor = Color(0xFF10B981)       // Emerald Green
+private val AuthGradientStart = Color(0xFF0F172A)     // Very Dark Blue
+private val AuthGradientEnd = Color(0xFF1E40AF)       // Royal Blue
 
 // ============================================================================
 // SMART COMPOSABLE (Container/Screen)
@@ -110,30 +122,63 @@ fun LoginScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoanovaBackground)
+            .background(Color(0xFFF8FAFC))
     ) {
-        // Upper Blue Section (Header)
+        // Upper Section with Modern Gradient
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(320.dp)
                 .background(
-                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            AuthGradientStart,
+                            AuthPrimaryColor,
+                            AuthGradientEnd
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
                 )
         ) {
+            // Decorative circles
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = size.width * 0.4f,
+                    center = Offset(size.width * 0.9f, size.height * 0.2f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.08f),
+                    radius = size.width * 0.3f,
+                    center = Offset(size.width * 0.1f, size.height * 0.7f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.03f),
+                    radius = size.width * 0.25f,
+                    center = Offset(size.width * 0.5f, size.height * -0.1f)
+                )
+            }
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 48.dp),
+                    .padding(top = 56.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo Container
+                // Logo Container with glow effect
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
-                        .background(Color.White.copy(alpha = 0.2f), shape = androidx.compose.foundation.shape.CircleShape)
+                        .size(110.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.25f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        )
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -144,7 +189,7 @@ fun LoginScreenContent(
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 Text(
                     text = "Selamat Datang",
@@ -153,6 +198,7 @@ fun LoginScreenContent(
                         color = Color.White
                     )
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Masuk untuk melanjutkan",
                     style = MaterialTheme.typography.bodyLarge.copy(
@@ -166,10 +212,10 @@ fun LoginScreenContent(
         Card(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 260.dp), // Overlap with header
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                .padding(top = 280.dp),
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -184,9 +230,9 @@ fun LoginScreenContent(
                     exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
                 ) {
                     Surface(
-                        color = Color(0xFFFDE8E8), // Pink background
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.2f)), // Subtle red border
+                        color = Color(0xFFFDE8E8),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 16.dp)
@@ -201,14 +247,14 @@ fun LoginScreenContent(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = null,
-                                tint = Color(0xFFEF4444), // Red color
+                                tint = Color(0xFFEF4444),
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = uiState.error ?: "",
                                 color = Color(0xFFEF4444),
-                                fontWeight = FontWeight.SemiBold, // Slightly less aggressive than Bold
+                                fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
                                 textAlign = TextAlign.Start
                             )
@@ -228,18 +274,18 @@ fun LoginScreenContent(
                     placeholder = { Text(stringResource(R.string.username_placeholder)) },
                     leadingIcon = {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Person,
+                            imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = if (usernameError != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                            tint = if (usernameError != null) MaterialTheme.colorScheme.error else AuthSecondaryColor
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LoanovaBlue,
-                        focusedLabelColor = LoanovaBlue,
-                        cursorColor = LoanovaBlue,
+                        focusedBorderColor = AuthSecondaryColor,
+                        focusedLabelColor = AuthSecondaryColor,
+                        cursorColor = AuthSecondaryColor,
                         unfocusedBorderColor = Color.LightGray,
                         errorBorderColor = MaterialTheme.colorScheme.error,
                         errorLabelColor = MaterialTheme.colorScheme.error
@@ -272,9 +318,9 @@ fun LoginScreenContent(
                     placeholder = { Text(stringResource(R.string.password_placeholder)) },
                     leadingIcon = {
                         Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Lock,
+                            imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = if (passwordError != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                            tint = if (passwordError != null) MaterialTheme.colorScheme.error else AuthSecondaryColor
                         )
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -290,9 +336,9 @@ fun LoginScreenContent(
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LoanovaBlue,
-                        focusedLabelColor = LoanovaBlue,
-                        cursorColor = LoanovaBlue,
+                        focusedBorderColor = AuthSecondaryColor,
+                        focusedLabelColor = AuthSecondaryColor,
+                        cursorColor = AuthSecondaryColor,
                         unfocusedBorderColor = Color.LightGray,
                         errorBorderColor = MaterialTheme.colorScheme.error,
                         errorLabelColor = MaterialTheme.colorScheme.error
@@ -313,17 +359,17 @@ fun LoginScreenContent(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Login Button
+                // Login Button with Gradient
                 Button(
                     onClick = { onLoginClick(username, password) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .shadow(8.dp, RoundedCornerShape(16.dp)),
+                        .shadow(12.dp, RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = LoanovaBlue,
-                        disabledContainerColor = LoanovaBlue.copy(alpha = 0.5f)
+                        containerColor = AuthPrimaryColor,
+                        disabledContainerColor = AuthPrimaryColor.copy(alpha = 0.5f)
                     ),
                     enabled = !uiState.isLoading
                 ) {
@@ -357,7 +403,7 @@ fun LoginScreenContent(
                     TextButton(onClick = onRegisterClick) {
                         Text(
                             text = stringResource(R.string.register_button),
-                            color = LoanovaBlue,
+                            color = AuthSecondaryColor,
                             fontWeight = FontWeight.Bold
                         )
                     }

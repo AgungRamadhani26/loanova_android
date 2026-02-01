@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,7 +18,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -34,6 +37,13 @@ import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
+
+// Modern color palette for register screen
+private val RegisterPrimaryColor = Color(0xFF059669)    // Emerald Green
+private val RegisterSecondaryColor = Color(0xFF10B981)  // Light Emerald
+private val RegisterGradientStart = Color(0xFF064E3B)   // Dark Emerald
+private val RegisterGradientEnd = Color(0xFF047857)     // Medium Emerald
+private val RegisterAccentColor = Color(0xFF34D399)     // Bright Emerald
 
 /**
  * Halaman Registrasi (Daftar Akun Baru).
@@ -64,12 +74,27 @@ fun RegisterScreen(
                     viewModel.resetState()
                     onNavigateToLogin() 
                 }) {
-                    Text("Login Sekarang")
+                    Text("Login Sekarang", color = RegisterPrimaryColor, fontWeight = FontWeight.Bold)
                 }
             },
-            title = { Text("Pendaftaran Berhasil") },
+            title = { 
+                Text(
+                    "Pendaftaran Berhasil", 
+                    fontWeight = FontWeight.Bold,
+                    color = RegisterPrimaryColor
+                ) 
+            },
             text = { Text("Akun Anda telah berhasil dibuat. Silakan login untuk melanjutkan.") },
-            icon = { Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green) }
+            icon = { 
+                Icon(
+                    Icons.Default.CheckCircle, 
+                    contentDescription = null, 
+                    tint = RegisterPrimaryColor,
+                    modifier = Modifier.size(48.dp)
+                ) 
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp)
         )
     }
 
@@ -97,30 +122,63 @@ fun RegisterScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoanovaBackground)
+            .background(Color(0xFFF0FDF4)) // Light emerald background
     ) {
-        // Upper Blue Section (Header)
+        // Upper Section with Modern Gradient
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            RegisterGradientStart,
+                            RegisterPrimaryColor,
+                            RegisterGradientEnd
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
                 )
         ) {
+            // Decorative circles
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = size.width * 0.35f,
+                    center = Offset(size.width * 0.85f, size.height * 0.25f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.08f),
+                    radius = size.width * 0.25f,
+                    center = Offset(size.width * 0.15f, size.height * 0.75f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.03f),
+                    radius = size.width * 0.2f,
+                    center = Offset(size.width * 0.5f, size.height * 0.1f)
+                )
+            }
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo Container
+                // Logo Container with glow effect
                 Box(
                     modifier = Modifier
-                        .size(80.dp) // Slightly smaller than login to fit title
-                        .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
+                        .size(90.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.25f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        )
                         .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -140,6 +198,7 @@ fun RegisterScreenContent(
                         color = Color.White
                     )
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Lengkapi data diri untuk memulai",
                     style = MaterialTheme.typography.bodyLarge.copy(
@@ -153,10 +212,10 @@ fun RegisterScreenContent(
         Card(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 220.dp), // Check overlap needed
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                .padding(top = 250.dp),
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -218,16 +277,16 @@ fun RegisterScreenContent(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = if (usernameError != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                            tint = if (usernameError != null) MaterialTheme.colorScheme.error else RegisterPrimaryColor
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LoanovaBlue,
-                        focusedLabelColor = LoanovaBlue,
-                        cursorColor = LoanovaBlue,
+                        focusedBorderColor = RegisterPrimaryColor,
+                        focusedLabelColor = RegisterPrimaryColor,
+                        cursorColor = RegisterPrimaryColor,
                         unfocusedBorderColor = Color.LightGray,
                         errorBorderColor = MaterialTheme.colorScheme.error,
                         errorLabelColor = MaterialTheme.colorScheme.error
@@ -262,7 +321,7 @@ fun RegisterScreenContent(
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = null,
-                            tint = if (emailError != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                            tint = if (emailError != null) MaterialTheme.colorScheme.error else RegisterPrimaryColor
                         )
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -270,9 +329,9 @@ fun RegisterScreenContent(
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LoanovaBlue,
-                        focusedLabelColor = LoanovaBlue,
-                        cursorColor = LoanovaBlue,
+                        focusedBorderColor = RegisterPrimaryColor,
+                        focusedLabelColor = RegisterPrimaryColor,
+                        cursorColor = RegisterPrimaryColor,
                         unfocusedBorderColor = Color.LightGray,
                         errorBorderColor = MaterialTheme.colorScheme.error,
                         errorLabelColor = MaterialTheme.colorScheme.error
@@ -307,7 +366,7 @@ fun RegisterScreenContent(
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = if (passwordError != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                            tint = if (passwordError != null) MaterialTheme.colorScheme.error else RegisterPrimaryColor
                         )
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -322,9 +381,9 @@ fun RegisterScreenContent(
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = LoanovaBlue,
-                        focusedLabelColor = LoanovaBlue,
-                        cursorColor = LoanovaBlue,
+                        focusedBorderColor = RegisterPrimaryColor,
+                        focusedLabelColor = RegisterPrimaryColor,
+                        cursorColor = RegisterPrimaryColor,
                         unfocusedBorderColor = Color.LightGray,
                         errorBorderColor = MaterialTheme.colorScheme.error,
                         errorLabelColor = MaterialTheme.colorScheme.error
@@ -353,34 +412,37 @@ fun RegisterScreenContent(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Register Button
-                Button(
-                    onClick = { 
-                        onRegister(RegisterRequest(username, email, password)) 
-                    },
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(8.dp, RoundedCornerShape(16.dp)),
+                        .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = LoanovaBlue,
-                        disabledContainerColor = LoanovaBlue.copy(alpha = 0.5f)
-                    ),
-                    enabled = !uiState.isLoading
+                    shadowElevation = 8.dp,
+                    color = if (uiState.isLoading) RegisterPrimaryColor.copy(alpha = 0.5f) else RegisterPrimaryColor,
+                    onClick = { 
+                        if (!uiState.isLoading) {
+                            onRegister(RegisterRequest(username, email, password)) 
+                        }
+                    }
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Daftar Sekarang",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Daftar Sekarang",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
 
@@ -398,7 +460,7 @@ fun RegisterScreenContent(
                     TextButton(onClick = onNavigateToLogin) {
                         Text(
                             text = "Masuk",
-                            color = LoanovaBlue,
+                            color = RegisterPrimaryColor,
                             fontWeight = FontWeight.Bold
                         )
                     }

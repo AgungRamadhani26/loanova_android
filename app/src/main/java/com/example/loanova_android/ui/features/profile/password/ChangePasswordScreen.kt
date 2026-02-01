@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,10 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +43,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
 import com.example.loanova_android.ui.theme.LoanovaBackground
+
+// Modern color palette for password screen
+private val PasswordPrimaryColor = Color(0xFFFF9800)    // Orange
+private val PasswordSecondaryColor = Color(0xFFFB923C)  // Light Orange
+private val PasswordGradientStart = Color(0xFF9A3412)   // Dark Orange/Brown
+private val PasswordGradientMid = Color(0xFFEA580C)     // Medium Orange
+private val PasswordGradientEnd = Color(0xFFFF9800)     // Bright Orange
 
 @Composable
 fun ChangePasswordScreen(
@@ -61,19 +71,44 @@ fun ChangePasswordScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoanovaBackground)
+            .background(Color(0xFFFFFBEB)) // Light amber background
     ) {
-        // 1. Upper Blue Section (Header) with Gradient
+        // 1. Upper Section with Modern Gradient
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            PasswordGradientStart,
+                            PasswordGradientMid,
+                            PasswordGradientEnd
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     )
                 )
         ) {
+            // Decorative circles
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = size.width * 0.35f,
+                    center = Offset(size.width * 0.9f, size.height * 0.2f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.08f),
+                    radius = size.width * 0.25f,
+                    center = Offset(size.width * 0.1f, size.height * 0.8f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.03f),
+                    radius = size.width * 0.2f,
+                    center = Offset(size.width * 0.5f, size.height * 0.05f)
+                )
+            }
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -85,9 +120,16 @@ fun ChangePasswordScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    IconButton(
+                        onClick = onNavigateUp,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Kembali",
                         color = Color.White,
@@ -97,16 +139,24 @@ fun ChangePasswordScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Large Security Icon Illustration
+                // Large Security Icon with glow effect
                 Box(
                     modifier = Modifier
                         .size(100.dp)
-                        .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.25f),
+                                    Color.White.copy(alpha = 0.1f)
+                                )
+                            )
+                        )
                         .padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Security,
+                        imageVector = Icons.Default.Shield,
                         contentDescription = "Security Illustration",
                         tint = Color.White,
                         modifier = Modifier.fillMaxSize()
@@ -121,6 +171,7 @@ fun ChangePasswordScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Amankan akun Anda secara berkala",
                     style = MaterialTheme.typography.bodyMedium,
@@ -133,14 +184,14 @@ fun ChangePasswordScreen(
         Card(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 280.dp), // Check overlap
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                .padding(top = 270.dp),
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
         ) {
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = LoanovaBlue)
+                    CircularProgressIndicator(color = PasswordPrimaryColor)
                 }
             } else {
                 Column(
@@ -159,8 +210,8 @@ fun ChangePasswordScreen(
                     ) {
                         Surface(
                             color = Color(0xFFFDE8E8),
-                            shape = RoundedCornerShape(8.dp),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.2f)),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 24.dp)
@@ -189,7 +240,8 @@ fun ChangePasswordScreen(
                         onValueChange = viewModel::onCurrentPasswordChanged,
                         label = "Password Saat Ini",
                         placeholder = "Masukkan password saat ini",
-                        errorMessage = uiState.fieldErrors["currentPassword"]
+                        errorMessage = uiState.fieldErrors["currentPassword"],
+                        primaryColor = PasswordPrimaryColor
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -199,7 +251,8 @@ fun ChangePasswordScreen(
                         onValueChange = viewModel::onNewPasswordChanged,
                         label = "Password Baru",
                         placeholder = "Masukkan password baru",
-                        errorMessage = uiState.fieldErrors["newPassword"]
+                        errorMessage = uiState.fieldErrors["newPassword"],
+                        primaryColor = PasswordPrimaryColor
                     )
                     
                     Spacer(modifier = Modifier.height(40.dp))
@@ -209,8 +262,8 @@ fun ChangePasswordScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp)),
-                        colors = ButtonDefaults.buttonColors(containerColor = LoanovaBlue),
+                            .shadow(12.dp, RoundedCornerShape(16.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = PasswordPrimaryColor),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Text("Simpan Password Baru", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -229,7 +282,8 @@ fun PasswordTextField(
     onValueChange: (String) -> Unit,
     label: String,
     placeholder: String,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    primaryColor: Color = Color(0xFFFF9800)
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -249,7 +303,7 @@ fun PasswordTextField(
                 Icon(
                     Icons.Default.Lock, 
                     contentDescription = null, 
-                    tint = if (errorMessage != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                    tint = if (errorMessage != null) MaterialTheme.colorScheme.error else primaryColor
                 ) 
             },
             trailingIcon = {
@@ -265,9 +319,9 @@ fun PasswordTextField(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = LoanovaBlue,
-                focusedLabelColor = LoanovaBlue,
-                cursorColor = LoanovaBlue,
+                focusedBorderColor = primaryColor,
+                focusedLabelColor = primaryColor,
+                cursorColor = primaryColor,
                 unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 errorLabelColor = MaterialTheme.colorScheme.error
