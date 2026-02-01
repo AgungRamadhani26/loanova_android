@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +60,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import java.io.File
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -345,6 +347,16 @@ fun LoanApplicationScreen(
                         uri = uiState.payslipPhotoUri,
                         error = uiState.fieldErrors?.get("payslipPhoto"),
                         onClick = { payslipLauncher.launch("image/*") }
+                    )
+                }
+                
+                // CARD 5: PREVIEW PENGAJUAN
+                if (uiState.selectedPlafondId != null && uiState.amount.isNotBlank()) {
+                    LoanPreviewCard(
+                        amount = uiState.amount,
+                        tenor = uiState.tenor,
+                        interestRate = uiState.interestRate,
+                        plafondName = uiState.activePlafond?.plafondName ?: ""
                     )
                 }
                 
@@ -915,5 +927,431 @@ private fun getPlafondColor(name: String): Color {
         name.contains("Red", ignoreCase = true) -> Color(0xFFF44336) // Red 500
         name.contains("Black", ignoreCase = true) -> Color(0xFF212121) // Grey 900
         else -> LoanovaBlue
+    }
+}
+
+/**
+ * Loan Preview Card - Menampilkan ringkasan perhitungan pinjaman sebelum submit.
+ * Menggunakan metode Flat Interest (Bunga Flat).
+ * Design: Modern fintech style dengan glassmorphism effect
+ */
+@Composable
+private fun LoanPreviewCard(
+    amount: String,
+    tenor: Int,
+    interestRate: BigDecimal,
+    plafondName: String
+) {
+    // Parse amount
+    val loanAmount = try { 
+        BigDecimal(amount.replace(",", "").replace(".", "")) 
+    } catch (e: Exception) { 
+        BigDecimal.ZERO 
+    }
+    
+    // Perhitungan Flat Interest
+    // Total Bunga = Pokok × (Bunga% / 100) × Tenor
+    val totalInterest = loanAmount
+        .multiply(interestRate)
+        .divide(BigDecimal("100"), 2, RoundingMode.HALF_UP)
+        .multiply(BigDecimal(tenor))
+    
+    // Total Pelunasan = Pokok + Total Bunga
+    val totalRepayment = loanAmount.add(totalInterest)
+    
+    // Cicilan per Bulan = Total Pelunasan / Tenor
+    val monthlyInstallment = if (tenor > 0) {
+        totalRepayment.divide(BigDecimal(tenor), 0, RoundingMode.CEILING)
+    } else {
+        BigDecimal.ZERO
+    }
+    
+    val themeColor = getPlafondColor(plafondName)
+    val gradientColors = listOf(
+        themeColor,
+        themeColor.copy(alpha = 0.85f),
+        themeColor.copy(alpha = 0.7f)
+    )
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(20.dp),
+                ambientColor = themeColor.copy(alpha = 0.4f),
+                spotColor = themeColor.copy(alpha = 0.4f)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = gradientColors,
+                        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                        end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
+                )
+        ) {
+            // Decorative circles for modern look
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .offset(x = (-30).dp, y = (-30).dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = 20.dp, y = (-20).dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+            )
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 15.dp, y = 15.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.05f))
+            )
+            
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color.White.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("📋", fontSize = 12.sp)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Preview Pengajuan",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            "Simulasi perhitungan pinjaman Anda",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+                    // Badge plafond
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            plafondName,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+                
+                // Main Content Card (Glassmorphism style)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                        .padding(bottom = 10.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White.copy(alpha = 0.95f),
+                    shadowElevation = 0.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Row 1: Jumlah Pinjaman & Tenor
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ModernInfoBox(
+                                modifier = Modifier.weight(1f),
+                                icon = "💰",
+                                label = "Jumlah Pinjaman",
+                                value = formatCurrency(loanAmount),
+                                accentColor = LoanovaBlue
+                            )
+                            ModernInfoBox(
+                                modifier = Modifier.weight(1f),
+                                icon = "📅",
+                                label = "Tenor",
+                                value = "$tenor Bulan",
+                                accentColor = LoanovaBlue
+                            )
+                        }
+                        
+                        // Row 2: Bunga per Bulan & Total Bunga
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ModernInfoBox(
+                                modifier = Modifier.weight(1f),
+                                icon = "📊",
+                                label = "Bunga/Bulan",
+                                value = "${interestRate.setScale(2, RoundingMode.HALF_UP)}%",
+                                accentColor = Color(0xFFFF9800)
+                            )
+                            ModernInfoBox(
+                                modifier = Modifier.weight(1f),
+                                icon = "📈",
+                                label = "Total Bunga",
+                                value = formatCurrency(totalInterest),
+                                accentColor = Color(0xFFFF9800)
+                            )
+                        }
+                        
+                        // Stylish Divider
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(2.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                themeColor.copy(alpha = 0.3f)
+                                            )
+                                        )
+                                    )
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = themeColor.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    "TOTAL",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    fontSize = 10.sp,
+                                    color = themeColor,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(2.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                themeColor.copy(alpha = 0.3f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+                        
+                        // Total Pelunasan - Premium Highlight
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            themeColor.copy(alpha = 0.08f),
+                                            themeColor.copy(alpha = 0.15f),
+                                            themeColor.copy(alpha = 0.08f)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    BorderStroke(1.dp, themeColor.copy(alpha = 0.2f)),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("💳", fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            "Total Pelunasan",
+                                            fontSize = 10.sp,
+                                            color = Color.Gray,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        formatCurrency(totalRepayment),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = themeColor
+                                    )
+                                }
+                                
+                                // Cicilan per bulan - Modern badge
+                                Column(
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    Text(
+                                        "Cicilan/Bulan",
+                                        fontSize = 9.sp,
+                                        color = Color.Gray,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF4CAF50),
+                                                        Color(0xFF66BB6A)
+                                                    )
+                                                )
+                                            )
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            formatCurrency(monthlyInstallment),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Modern Info disclaimer
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFFFFF8E1),
+                                            Color(0xFFFFF3E0)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    BorderStroke(1.dp, Color(0xFFFFE082).copy(alpha = 0.5f)),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFFB74D).copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("ℹ", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Perhitungan menggunakan metode bunga flat. Nilai akhir dapat berbeda sesuai kebijakan.",
+                                fontSize = 9.sp,
+                                color = Color(0xFF6D4C41),
+                                lineHeight = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModernInfoBox(
+    modifier: Modifier = Modifier,
+    icon: String,
+    label: String,
+    value: String,
+    accentColor: Color
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.05f),
+                        accentColor.copy(alpha = 0.1f)
+                    )
+                )
+            )
+            .border(
+                BorderStroke(1.dp, accentColor.copy(alpha = 0.15f)),
+                RoundedCornerShape(10.dp)
+            )
+            .padding(10.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(accentColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(icon, fontSize = 10.sp)
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    label,
+                    fontSize = 9.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                value,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = accentColor
+            )
+        }
     }
 }

@@ -53,6 +53,9 @@ data class LoanApplicationUiState(
     val minTenor: Int = 6,
     val maxTenor: Int = 60,
     
+    // Interest rate dari plafond (% per bulan)
+    val interestRate: BigDecimal = BigDecimal.ZERO,
+    
     // Location
     val latitude: Double? = null,
     val longitude: Double? = null,
@@ -141,6 +144,9 @@ class LoanApplicationViewModel @Inject constructor(
                         maxAmount = activePlafond.remainingAmount, // Cap at remaining amount
                         minTenor = detailedPlafond.tenorMin,
                         maxTenor = detailedPlafond.tenorMax,
+                        
+                        // Interest rate dari plafond
+                        interestRate = detailedPlafond.interestRate,
                         
                         // Initial values
                         amount = "1000000",

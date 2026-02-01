@@ -1,36 +1,68 @@
 package com.example.loanova_android.ui.features.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.domain.model.Plafond
 import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.ui.theme.*
 import com.example.loanova_android.ui.features.profile.ProfileScreen
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
+import java.util.Calendar
 import java.util.Locale
 
 @Composable
@@ -151,9 +183,10 @@ fun HomeContent(
             .padding(padding),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
+        // Hero Section dengan Greeting
         item { HeroSection(onNavigateToLogin, uiState.isLoggedIn, uiState.username) }
         
-        // Quick Menu
+        // Quick Menu dengan Glassmorphism
         item { 
             QuickMenuSection(
                 onNavigateToLogin = onNavigateToLogin, 
@@ -165,6 +198,10 @@ fun HomeContent(
             ) 
         }
         
+        // Promo Banner Section
+        item { PromoBannerSection() }
+        
+        // Plafond Section dengan decorative header
         item { PlafondTitleSection() }
         
         if (uiState.isLoading) {
@@ -186,8 +223,12 @@ fun HomeContent(
             item { PlafondListSection(uiState.plafonds) }
         }
 
-        // Moved FeatureSection here and refined it
-        // Moved FeatureSection here and refined it
+        // Tips Keuangan Section
+        item { FinancialTipsSection() }
+        
+        // Footer Section
+        item { FooterSection() }
+        
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
@@ -245,18 +286,26 @@ fun QuickMenuSection(
         QuickMenuItem("Riwayat", Icons.Default.History, Color(0xFF9C27B0))
     )
 
-    Row(
+    // Glassmorphism Card Container
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)
+            .padding(vertical = 8.dp)
+            .shadow(8.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        items.forEach { item ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clickable { 
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp, horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            items.forEach { item ->
+                QuickMenuItemCard(
+                    item = item,
+                    onClick = {
                         if (item.label == "Plafond") {
                             if (!isLoggedIn) {
                                 onNavigateToLogin()
@@ -272,44 +321,76 @@ fun QuickMenuSection(
                                 onProfileRequired()
                             } else {
                                 if (item.label == "Ajukan") onNavigateToLoanApplication()
-                                // else: Riwayat Feature Placeholder
                             }
                         } else {
-                            // Placeholder for other items (Simulasi, etc)
                             if (!isLoggedIn) onNavigateToLogin()
                         }
                     }
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(item.color.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.label,
-                        tint = item.color,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    fontSize = 12.sp,
-                    color = Color.Black.copy(alpha = 0.8f)
                 )
             }
         }
     }
 }
 
+@Composable
+private fun QuickMenuItemCard(
+    item: QuickMenuItem,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        // Animated icon container
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .shadow(4.dp, CircleShape)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            item.color.copy(alpha = 0.15f),
+                            item.color.copy(alpha = 0.05f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            item.color.copy(alpha = 0.3f),
+                            item.color.copy(alpha = 0.1f)
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.label,
+                tint = item.color,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = item.label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            fontSize = 11.sp,
+            color = Color.Black.copy(alpha = 0.8f)
+        )
+    }
+}
+
 data class QuickMenuItem(val label: String, val icon: ImageVector, val color: Color)
 
 @Composable
-fun PlafondCard(plafond: Plafond, modifier: Modifier = Modifier) {
+fun PlafondCard(plafond: Plafond, onSimulateClick: () -> Unit, modifier: Modifier = Modifier) {
     val themeColor = getPlafondColor(plafond.name)
     val gradientBrush = Brush.linearGradient(
         colors = listOf(
@@ -407,7 +488,7 @@ fun PlafondCard(plafond: Plafond, modifier: Modifier = Modifier) {
                 
                 // Simulation Button (Styled white)
                 Button(
-                    onClick = { /* TODO: Navigate to Simulation */ },
+                    onClick = onSimulateClick,
                     modifier = Modifier.fillMaxWidth().height(32.dp), // Height 32dp
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -447,33 +528,130 @@ fun formatCurrency(amount: java.math.BigDecimal): String {
 
 @Composable
 fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: String? = null) {
+    // Get time-based greeting
+    val greeting = remember {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        when {
+            hour < 11 -> "Selamat Pagi" to "☀️"
+            hour < 15 -> "Selamat Siang" to "🌤️"
+            hour < 18 -> "Selamat Sore" to "🌅"
+            else -> "Selamat Malam" to "🌙"
+        }
+    }
+    
+    // Floating animation
+    val infiniteTransition = rememberInfiniteTransition(label = "hero")
+    val floatOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "float"
+    )
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.horizontalGradient(listOf(LoanovaBlue, LoanovaLightBlue)))
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text(
-                text = "Selamat Datang di Loanova",
-                style = MaterialTheme.typography.headlineSmall,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
+            .shadow(12.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF1A237E),
+                        Color(0xFF3949AB),
+                        LoanovaBlue
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
             )
+    ) {
+        // Decorative floating circles
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawCircle(
+                color = Color.White.copy(alpha = 0.08f),
+                center = Offset(size.width * 0.85f, size.height * 0.2f),
+                radius = size.width * 0.35f
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.05f),
+                center = Offset(size.width * 0.1f, size.height * 0.9f),
+                radius = size.width * 0.25f
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.03f),
+                center = Offset(size.width * 0.5f, size.height * 1.2f),
+                radius = size.width * 0.4f
+            )
+        }
+        
+        Column(modifier = Modifier.padding(24.dp)) {
+            // Greeting Row with emoji
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = greeting.second,
+                    fontSize = 24.sp,
+                    modifier = Modifier.graphicsLayer {
+                        translationY = floatOffset
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = greeting.first,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (isLoggedIn && username != null) {
+                        Text(
+                            text = username,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // App Tagline
+            Surface(
+                color = Color.White.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Verified,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Cepat • Aman • 100% Online",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Brief explanation of advantages
             Text(
-                text = "Solusi keuangan digital yang Cepat, Aman, dan 100% Online.",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Nikmati kemudahan akses finansial kapan saja dengan layanan Support 24/7 terpercaya.",
+                text = "Solusi keuangan digital terpercaya dengan proses mudah dan dukungan 24/7.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.85f),
                 lineHeight = 20.sp
             )
 
@@ -482,12 +660,13 @@ fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: St
                 Button(
                     onClick = onNavigateToLogin,
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
-                    Text("Masuk Sekarang", color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                    Text("Masuk Sekarang", color = Color(0xFF1A237E), fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = LoanovaBlue)
+                    Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = Color(0xFF1A237E))
                 }
             }
         }
@@ -496,21 +675,80 @@ fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: St
 
 @Composable
 fun PlafondTitleSection() {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(
-            text = "Pilihan Pinjaman",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-        )
-        Text(
-            text = "Sesuaikan dengan kebutuhan Anda",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray
-        )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Decorative accent bar
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(LoanovaBlue, Color(0xFF4CAF50))
+                        )
+                    )
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Pilihan Pinjaman",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color(0xFF1A237E)
+                )
+                Text(
+                    text = "Sesuaikan dengan kebutuhan Anda",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+        }
+        
+        // Decorative badge
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = LoanovaBlue.copy(alpha = 0.1f)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.LocalOffer,
+                    contentDescription = null,
+                    tint = LoanovaBlue,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Promo",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = LoanovaBlue
+                )
+            }
+        }
     }
 }
 
 @Composable
 fun PlafondListSection(plafonds: List<Plafond>) {
+    var selectedPlafondForSimulation by remember { mutableStateOf<Plafond?>(null) }
+    
+    // Show Simulation Dialog
+    selectedPlafondForSimulation?.let { plafond ->
+        LoanSimulationDialog(
+            plafond = plafond,
+            onDismiss = { selectedPlafondForSimulation = null }
+        )
+    }
+    
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         if (plafonds.isEmpty()) {
              // Optional: Show empty state
@@ -518,6 +756,7 @@ fun PlafondListSection(plafonds: List<Plafond>) {
             plafonds.forEach { plafond ->
                 PlafondCard(
                     plafond = plafond,
+                    onSimulateClick = { selectedPlafondForSimulation = plafond },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp) // Extra padding to make it narrower than Hero
@@ -528,7 +767,568 @@ fun PlafondListSection(plafonds: List<Plafond>) {
     }
 }
 
-// FeatureSection, SecuritySection, StepsSection removed as per user request
+/**
+ * Promo Banner Section - Horizontal scrollable promo cards
+ */
+@Composable
+fun PromoBannerSection() {
+    val promos = listOf(
+        PromoItem(
+            title = "Bunga Ringan",
+            subtitle = "Mulai dari 0.75%/bulan",
+            icon = "\ud83c\udf81",
+            gradientColors = listOf(Color(0xFF667eea), Color(0xFF764ba2))
+        ),
+        PromoItem(
+            title = "Proses Cepat",
+            subtitle = "Approval 1x24 jam",
+            icon = "\u26a1",
+            gradientColors = listOf(Color(0xFFf093fb), Color(0xFFf5576c))
+        ),
+        PromoItem(
+            title = "Tanpa Ribet",
+            subtitle = "Untuk pinjaman tertentu",
+            icon = "\ud83d\udee1\ufe0f",
+            gradientColors = listOf(Color(0xFF4facfe), Color(0xFF00f2fe))
+        )
+    )
+    
+    Column(
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
+        // Section Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Keunggulan Kami",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1A237E)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // Horizontal scroll promos
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            promos.forEach { promo ->
+                PromoBannerCard(promo = promo)
+            }
+        }
+    }
+}
+
+data class PromoItem(
+    val title: String,
+    val subtitle: String,
+    val icon: String,
+    val gradientColors: List<Color>
+)
+
+@Composable
+private fun PromoBannerCard(promo: PromoItem) {
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .height(90.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(colors = promo.gradientColors)
+                )
+        ) {
+            // Decorative circle
+            Canvas(modifier = Modifier.matchParentSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.1f),
+                    center = Offset(size.width * 0.9f, size.height * 0.3f),
+                    radius = size.width * 0.3f
+                )
+            }
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(promo.icon, fontSize = 28.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        promo.title,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 1
+                    )
+                    Text(
+                        promo.subtitle,
+                        fontSize = 9.sp,
+                        color = Color.White.copy(alpha = 0.9f),
+                        maxLines = 2,
+                        lineHeight = 11.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Financial Tips Section - Horizontal scrollable tips cards
+ */
+@Composable
+fun FinancialTipsSection() {
+    var selectedTip by remember { mutableStateOf<Pair<TipItem, Int>?>(null) }
+    
+    val tips = listOf(
+        TipItem(
+            title = "Kelola Utang dengan Bijak",
+            description = "Pastikan cicilan tidak melebihi 30% dari pendapatan bulanan",
+            fullDescription = "Aturan 30% adalah panduan penting dalam mengelola utang. Artinya, total cicilan bulanan Anda (termasuk KPR, cicilan kendaraan, kartu kredit, dan pinjaman lainnya) sebaiknya tidak melebihi 30% dari penghasilan bersih bulanan.\n\nContoh: Jika gaji bersih Anda Rp 10.000.000, maka maksimal cicilan adalah Rp 3.000.000.\n\n✅ Tips:\n• Hitung semua cicilan yang ada\n• Pertimbangkan kebutuhan darurat\n• Sisakan dana untuk tabungan",
+            icon = Icons.Outlined.Lightbulb,
+            color = Color(0xFFFF9800)
+        ),
+        TipItem(
+            title = "Dana Darurat",
+            description = "Sisihkan 3-6 bulan pengeluaran sebagai dana darurat",
+            fullDescription = "Dana darurat adalah simpanan yang disiapkan untuk situasi tidak terduga seperti kehilangan pekerjaan, sakit, atau kebutuhan mendesak lainnya.\n\nBerapa idealnya?\n• Single: 3-6 bulan pengeluaran\n• Menikah tanpa anak: 6-9 bulan\n• Menikah dengan anak: 9-12 bulan\n\n✅ Tips Membangun Dana Darurat:\n• Mulai dari 10% penghasilan\n• Simpan di rekening terpisah\n• Jangan digunakan untuk investasi berisiko\n• Tempatkan di instrumen likuid (tabungan/deposito)",
+            icon = Icons.Outlined.Savings,
+            color = Color(0xFF4CAF50)
+        ),
+        TipItem(
+            title = "Bandingkan Sebelum Pinjam",
+            description = "Perhatikan suku bunga, biaya admin, dan ketentuan lainnya",
+            fullDescription = "Sebelum mengajukan pinjaman, bandingkan beberapa hal penting berikut:\n\n📊 Yang Harus Dibandingkan:\n• Suku bunga efektif per tahun\n• Biaya administrasi & provisi\n• Biaya penalti pelunasan dini\n• Asuransi yang disyaratkan\n• Fleksibilitas tenor\n\n⚠️ Waspadai:\n• Bunga flat vs bunga efektif\n• Biaya tersembunyi\n• Syarat dan ketentuan yang merugikan\n\n✅ Tips:\n• Gunakan kalkulator simulasi\n• Baca kontrak dengan teliti\n• Tanyakan total biaya keseluruhan",
+            icon = Icons.Outlined.CompareArrows,
+            color = Color(0xFF2196F3)
+        ),
+        TipItem(
+            title = "Bayar Tepat Waktu",
+            description = "Hindari denda keterlambatan dengan membayar sebelum jatuh tempo",
+            fullDescription = "Membayar cicilan tepat waktu sangat penting untuk kesehatan keuangan Anda.\n\n❌ Dampak Telat Bayar:\n• Denda keterlambatan (biasanya 1-5% dari cicilan)\n• Bunga berjalan terus\n• Skor kredit menurun\n• Sulit mengajukan pinjaman di masa depan\n• Risiko penagihan\n\n✅ Tips Agar Selalu Tepat Waktu:\n• Pasang reminder H-3 jatuh tempo\n• Gunakan auto-debit\n• Bayar di awal bulan saat gaji masuk\n• Siapkan dana cadangan 1 bulan cicilan\n• Hubungi pemberi pinjaman jika kesulitan",
+            icon = Icons.Outlined.AccessTime,
+            color = Color(0xFF9C27B0)
+        )
+    )
+    
+    // Show Tip Detail Dialog
+    selectedTip?.let { (tip, index) ->
+        TipDetailDialog(
+            tip = tip,
+            index = index,
+            onDismiss = { selectedTip = null }
+        )
+    }
+    
+    Column(
+        modifier = Modifier.padding(vertical = 16.dp)
+    ) {
+        // Section Header dengan decorative element
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFFFFF3E0)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("💡", fontSize = 16.sp)
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = "Tips Keuangan",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A237E)
+                )
+                Text(
+                    text = "Tap untuk baca selengkapnya",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 11.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Horizontal scrollable tips
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(tips) { index, tip ->
+                TipCard(
+                    tip = tip, 
+                    index = index,
+                    onClick = { selectedTip = tip to index }
+                )
+            }
+        }
+    }
+}
+
+data class TipItem(
+    val title: String,
+    val description: String,
+    val fullDescription: String = description,
+    val icon: ImageVector,
+    val color: Color
+)
+
+@Composable
+private fun TipCard(tip: TipItem, index: Int, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(220.dp)
+            .height(130.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Top accent bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(tip.color)
+            )
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp)
+                    .padding(top = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(tip.color.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                tip.icon,
+                                contentDescription = null,
+                                tint = tip.color,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Tips #${index + 1}",
+                            fontSize = 9.sp,
+                            color = tip.color,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    // Tap hint
+                    Icon(
+                        Icons.Default.TouchApp,
+                        contentDescription = "Tap to read",
+                        tint = Color.LightGray,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    tip.title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    tip.description,
+                    fontSize = 10.sp,
+                    color = Color.Gray,
+                    lineHeight = 13.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                // Read more hint
+                Text(
+                    "Tap untuk baca selengkapnya →",
+                    fontSize = 9.sp,
+                    color = tip.color,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Tip Detail Dialog - Shows full tip content
+ */
+@Composable
+private fun TipDetailDialog(
+    tip: TipItem,
+    index: Int,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column {
+                // Header with gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    tip.color,
+                                    tip.color.copy(alpha = 0.7f)
+                                )
+                            )
+                        )
+                        .padding(20.dp)
+                ) {
+                    // Decorative circles
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.1f),
+                            center = Offset(size.width * 0.9f, size.height * 0.2f),
+                            radius = size.width * 0.25f
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.05f),
+                            center = Offset(size.width * 0.1f, size.height * 0.8f),
+                            radius = size.width * 0.15f
+                        )
+                    }
+                    
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        tip.icon,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Tips #${index + 1}",
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            
+                            // Close button
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Text(
+                            tip.title,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            lineHeight = 22.sp
+                        )
+                    }
+                }
+                
+                // Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        tip.fullDescription,
+                        fontSize = 13.sp,
+                        color = Color.Black.copy(alpha = 0.8f),
+                        lineHeight = 20.sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    // Action button
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = tip.color)
+                    ) {
+                        Text(
+                            "Mengerti",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Footer Section - App info and trust badges
+ */
+@Composable
+fun FooterSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp, bottom = 8.dp)
+    ) {
+        // Trust badges
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FF)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Dipercaya oleh ribuan pengguna",
+                    fontSize = 11.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TrustBadge(icon = "\ud83d\udee1\ufe0f", label = "Aman")
+                    TrustBadge(icon = "\u2705", label = "Terdaftar OJK")
+                    TrustBadge(icon = "\ud83d\udd12", label = "Terenkripsi")
+                    TrustBadge(icon = "\ud83d\udcde", label = "Support 24/7")
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // App info
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "\u00a9 2026 Loanova",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+            Text(
+                "  \u2022  ",
+                fontSize = 10.sp,
+                color = Color.LightGray
+            )
+            Text(
+                "v1.0.0",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrustBadge(icon: String, label: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(icon, fontSize = 20.sp)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            label,
+            fontSize = 9.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
 
 @Composable
 fun RestrictedActionDialog(
@@ -577,4 +1377,683 @@ fun RestrictedActionDialog(
         shape = RoundedCornerShape(16.dp),
         containerColor = Color.White
     )
+}
+
+/**
+ * Loan Simulation Dialog - Full screen dialog untuk simulasi pinjaman
+ * Design: Modern card-based dengan animasi
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoanSimulationDialog(
+    plafond: Plafond,
+    onDismiss: () -> Unit
+) {
+    var amountText by remember { mutableStateOf("5000000") }
+    var tenor by remember { mutableIntStateOf(plafond.tenorMin) }
+    var showResult by remember { mutableStateOf(false) }
+    
+    val themeColor = getPlafondColor(plafond.name)
+    
+    // Calculations
+    val amount = try { BigDecimal(amountText) } catch (e: Exception) { BigDecimal.ZERO }
+    val isAmountValid = amount > BigDecimal.ZERO && amount <= plafond.maxAmount
+    
+    // Flat Interest Calculation
+    val totalInterest = amount
+        .multiply(plafond.interestRate)
+        .divide(BigDecimal("100"), 2, RoundingMode.HALF_UP)
+        .multiply(BigDecimal(tenor))
+    
+    val totalRepayment = amount.add(totalInterest)
+    
+    val monthlyInstallment = if (tenor > 0) {
+        totalRepayment.divide(BigDecimal(tenor), 0, RoundingMode.CEILING)
+    } else {
+        BigDecimal.ZERO
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.85f)
+                    .clickable(enabled = false) {}, // Prevent dismiss on card click
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Header dengan gradient plafond
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(themeColor, themeColor.copy(alpha = 0.8f))
+                                )
+                            )
+                    ) {
+                        // Decorative elements
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.1f),
+                                center = androidx.compose.ui.geometry.Offset(size.width * 0.9f, size.height * 0.2f),
+                                radius = size.width * 0.3f
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.05f),
+                                center = androidx.compose.ui.geometry.Offset(size.width * 0.1f, size.height * 0.8f),
+                                radius = size.width * 0.2f
+                            )
+                        }
+                        
+                        Column(
+                            modifier = Modifier.padding(20.dp)
+                        ) {
+                            // Handle bar
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterHorizontally)
+                                    .width(40.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Color.White.copy(alpha = 0.5f))
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Calculate,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Simulasi Pinjaman",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 18.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "Hitung estimasi cicilan Anda",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.8f)
+                                    )
+                                }
+                                
+                                // Plafond badge
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                                ) {
+                                    Text(
+                                        plafond.name,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Info cards row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                SimulationHeaderChip(
+                                    modifier = Modifier.weight(1f),
+                                    icon = "💰",
+                                    label = "Max",
+                                    value = formatCurrency(plafond.maxAmount)
+                                )
+                                SimulationHeaderChip(
+                                    modifier = Modifier.weight(1f),
+                                    icon = "📊",
+                                    label = "Bunga",
+                                    value = "${plafond.interestRate}%/bln"
+                                )
+                                SimulationHeaderChip(
+                                    modifier = Modifier.weight(1f),
+                                    icon = "📅",
+                                    label = "Tenor",
+                                    value = "${plafond.tenorMin}-${plafond.tenorMax} bln"
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Content
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Input Amount
+                        item {
+                            SimulationInputCard(
+                                title = "Jumlah Pinjaman",
+                                icon = Icons.Default.Payments,
+                                themeColor = themeColor
+                            ) {
+                                OutlinedTextField(
+                                    value = amountText,
+                                    onValueChange = { 
+                                        amountText = it.filter { c -> c.isDigit() }
+                                        showResult = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("Masukkan jumlah", fontSize = 14.sp) },
+                                    prefix = { Text("Rp ", fontWeight = FontWeight.Bold, color = themeColor) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = themeColor,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true,
+                                    isError = amountText.isNotEmpty() && !isAmountValid,
+                                    supportingText = if (amountText.isNotEmpty() && !isAmountValid) {
+                                        { Text("Maksimal ${formatCurrency(plafond.maxAmount)}", color = MaterialTheme.colorScheme.error, fontSize = 11.sp) }
+                                    } else null
+                                )
+                                
+                                // Quick amount buttons
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    listOf("5jt" to "5000000", "10jt" to "10000000", "25jt" to "25000000", "50jt" to "50000000").forEach { (label, value) ->
+                                        val isDisabled = BigDecimal(value) > plafond.maxAmount
+                                        AssistChip(
+                                            onClick = { 
+                                                if (!isDisabled) {
+                                                    amountText = value
+                                                    showResult = false
+                                                }
+                                            },
+                                            label = { Text(label, fontSize = 10.sp) },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !isDisabled,
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = if (amountText == value) themeColor.copy(alpha = 0.1f) else Color.Transparent,
+                                                labelColor = if (isDisabled) Color.LightGray else themeColor
+                                            ),
+                                            border = AssistChipDefaults.assistChipBorder(
+                                                enabled = !isDisabled,
+                                                borderColor = if (amountText == value) themeColor else Color.LightGray
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Input Tenor
+                        item {
+                            SimulationInputCard(
+                                title = "Tenor (Bulan)",
+                                icon = Icons.Default.DateRange,
+                                themeColor = themeColor
+                            ) {
+                                // Tenor display
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { 
+                                            if (tenor > plafond.tenorMin) {
+                                                tenor--
+                                                showResult = false
+                                            }
+                                        },
+                                        enabled = tenor > plafond.tenorMin
+                                    ) {
+                                        Icon(
+                                            Icons.Default.RemoveCircle,
+                                            contentDescription = "Kurangi",
+                                            tint = if (tenor > plafond.tenorMin) themeColor else Color.LightGray,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(themeColor.copy(alpha = 0.1f))
+                                            .border(BorderStroke(1.dp, themeColor.copy(alpha = 0.3f)), RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 24.dp, vertical = 12.dp)
+                                    ) {
+                                        Text(
+                                            "$tenor Bulan",
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = themeColor
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    
+                                    IconButton(
+                                        onClick = { 
+                                            if (tenor < plafond.tenorMax) {
+                                                tenor++
+                                                showResult = false
+                                            }
+                                        },
+                                        enabled = tenor < plafond.tenorMax
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AddCircle,
+                                            contentDescription = "Tambah",
+                                            tint = if (tenor < plafond.tenorMax) themeColor else Color.LightGray,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+                                }
+                                
+                                // Tenor slider
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Slider(
+                                    value = tenor.toFloat(),
+                                    onValueChange = { 
+                                        tenor = it.toInt()
+                                        showResult = false
+                                    },
+                                    valueRange = plafond.tenorMin.toFloat()..plafond.tenorMax.toFloat(),
+                                    steps = plafond.tenorMax - plafond.tenorMin - 1,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = themeColor,
+                                        activeTrackColor = themeColor
+                                    )
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("${plafond.tenorMin} bln", fontSize = 10.sp, color = Color.Gray)
+                                    Text("${plafond.tenorMax} bln", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+                        }
+                        
+                        // Calculate Button
+                        item {
+                            Button(
+                                onClick = { showResult = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                enabled = isAmountValid,
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = themeColor,
+                                    disabledContainerColor = Color.LightGray
+                                )
+                            ) {
+                                Icon(Icons.Default.Calculate, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Hitung Simulasi", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+                        
+                        // Result Card (Animated)
+                        item {
+                            AnimatedVisibility(
+                                visible = showResult && isAmountValid,
+                                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)),
+                                exit = fadeOut() + slideOutVertically()
+                            ) {
+                                SimulationResultCard(
+                                    amount = amount,
+                                    tenor = tenor,
+                                    interestRate = plafond.interestRate,
+                                    totalInterest = totalInterest,
+                                    totalRepayment = totalRepayment,
+                                    monthlyInstallment = monthlyInstallment,
+                                    themeColor = themeColor,
+                                    plafondName = plafond.name
+                                )
+                            }
+                        }
+                        
+                        item { Spacer(modifier = Modifier.height(20.dp)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimulationHeaderChip(
+    modifier: Modifier = Modifier,
+    icon: String,
+    label: String,
+    value: String
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = Color.White.copy(alpha = 0.15f)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(icon, fontSize = 12.sp)
+            Text(label, fontSize = 8.sp, color = Color.White.copy(alpha = 0.7f))
+            Text(value, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun SimulationInputCard(
+    title: String,
+    icon: ImageVector,
+    themeColor: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(themeColor.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = themeColor, modifier = Modifier.size(16.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.Black.copy(alpha = 0.8f))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SimulationResultCard(
+    amount: BigDecimal,
+    tenor: Int,
+    interestRate: BigDecimal,
+    totalInterest: BigDecimal,
+    totalRepayment: BigDecimal,
+    monthlyInstallment: BigDecimal,
+    themeColor: Color,
+    plafondName: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column {
+            // Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color(0xFF1A237E),
+                                Color(0xFF3949AB)
+                            )
+                        )
+                    )
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Receipt,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Hasil Simulasi",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            plafondName,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+            
+            // Content with timeline style
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // Timeline items
+                SimulationResultRow(
+                    icon = "💵",
+                    label = "Pinjaman Pokok",
+                    value = formatCurrency(amount),
+                    isFirst = true
+                )
+                SimulationResultRow(
+                    icon = "📅",
+                    label = "Tenor",
+                    value = "$tenor Bulan"
+                )
+                SimulationResultRow(
+                    icon = "📊",
+                    label = "Bunga per Bulan",
+                    value = "${interestRate}%"
+                )
+                SimulationResultRow(
+                    icon = "📈",
+                    label = "Total Bunga ($tenor bulan)",
+                    value = formatCurrency(totalInterest),
+                    valueColor = Color(0xFFFF9800)
+                )
+                SimulationResultRow(
+                    icon = "💳",
+                    label = "Total Pelunasan",
+                    value = formatCurrency(totalRepayment),
+                    valueColor = Color(0xFF1A237E),
+                    isLast = true
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Highlight: Cicilan per bulan
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF4CAF50),
+                                    Color(0xFF81C784)
+                                )
+                            )
+                        )
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "Estimasi Cicilan",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                            Text(
+                                "per bulan",
+                                fontSize = 10.sp,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                        Text(
+                            formatCurrency(monthlyInstallment),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Disclaimer
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFFFF3E0))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text("⚠️", fontSize = 10.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Simulasi ini hanya estimasi. Nilai aktual dapat berbeda berdasarkan kebijakan dan persetujuan kredit.",
+                        fontSize = 9.sp,
+                        color = Color(0xFF6D4C41),
+                        lineHeight = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimulationResultRow(
+    icon: String,
+    label: String,
+    value: String,
+    valueColor: Color = Color.Black,
+    isFirst: Boolean = false,
+    isLast: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Timeline dot and line
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(32.dp)
+        ) {
+            if (!isFirst) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(8.dp)
+                        .background(Color.LightGray.copy(alpha = 0.5f))
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF5F5F5)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(icon, fontSize = 12.sp)
+            }
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(8.dp)
+                        .background(Color.LightGray.copy(alpha = 0.5f))
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Content
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            Text(
+                value,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = valueColor
+            )
+        }
+    }
 }
