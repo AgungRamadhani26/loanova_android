@@ -194,7 +194,8 @@ fun HomeContent(
                 onNavigateToLoanApplication = onNavigateToLoanApplication,
                 onProfileRequired = onProfileRequired,
                 isLoggedIn = uiState.isLoggedIn,
-                hasProfile = uiState.hasProfile
+                hasProfile = uiState.hasProfile,
+                plafonds = uiState.plafonds
             ) 
         }
         
@@ -277,14 +278,25 @@ fun QuickMenuSection(
     onNavigateToLoanApplication: () -> Unit,
     onProfileRequired: () -> Unit,
     isLoggedIn: Boolean,
-    hasProfile: Boolean
+    hasProfile: Boolean,
+    plafonds: List<Plafond>
 ) {
+    var showSimulationDialog by remember { mutableStateOf(false) }
+    
     val items = listOf(
         QuickMenuItem("Simulasi", Icons.Default.Calculate, Color(0xFF4CAF50)),
         QuickMenuItem("Ajukan", Icons.Default.CreditScore, Color(0xFF2196F3)),
         QuickMenuItem("Plafond", Icons.Default.AccountBalanceWallet, Color(0xFFFF9800)),
         QuickMenuItem("Riwayat", Icons.Default.History, Color(0xFF9C27B0))
     )
+    
+    // Show Standalone Simulation Dialog (no login required)
+    if (showSimulationDialog) {
+        StandaloneSimulationDialog(
+            plafonds = plafonds,
+            onDismiss = { showSimulationDialog = false }
+        )
+    }
 
     // Glassmorphism Card Container
     Card(
@@ -306,24 +318,29 @@ fun QuickMenuSection(
                 QuickMenuItemCard(
                     item = item,
                     onClick = {
-                        if (item.label == "Plafond") {
-                            if (!isLoggedIn) {
-                                onNavigateToLogin()
-                            } else if (!hasProfile) {
-                                onProfileRequired()
-                            } else {
-                                onNavigateToActivePlafond()
+                        when (item.label) {
+                            "Simulasi" -> {
+                                // No login required for simulation
+                                showSimulationDialog = true
                             }
-                        } else if (item.label == "Ajukan" || item.label == "Riwayat") {
-                            if (!isLoggedIn) {
-                                onNavigateToLogin()
-                            } else if (!hasProfile) {
-                                onProfileRequired()
-                            } else {
-                                if (item.label == "Ajukan") onNavigateToLoanApplication()
+                            "Plafond" -> {
+                                if (!isLoggedIn) {
+                                    onNavigateToLogin()
+                                } else if (!hasProfile) {
+                                    onProfileRequired()
+                                } else {
+                                    onNavigateToActivePlafond()
+                                }
                             }
-                        } else {
-                            if (!isLoggedIn) onNavigateToLogin()
+                            "Ajukan", "Riwayat" -> {
+                                if (!isLoggedIn) {
+                                    onNavigateToLogin()
+                                } else if (!hasProfile) {
+                                    onProfileRequired()
+                                } else {
+                                    if (item.label == "Ajukan") onNavigateToLoanApplication()
+                                }
+                            }
                         }
                     }
                 )
@@ -1241,6 +1258,903 @@ private fun TipDetailDialog(
                 }
             }
         }
+    }
+}
+
+/**
+ * Standalone Simulation Dialog - Multi-step simulation without login
+ * Step 1: Select Plafond
+ * Step 2: Input Amount & Tenor, Calculate
+ * Design: Wizard style with emerald green theme (different from plafond-based dialog)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StandaloneSimulationDialog(
+    plafonds: List<Plafond>,
+    onDismiss: () -> Unit
+) {
+    var currentStep by remember { mutableIntStateOf(1) }
+    var selectedPlafond by remember { mutableStateOf<Plafond?>(null) }
+    var amountText by remember { mutableStateOf("") }
+    var tenor by remember { mutableIntStateOf(0) }
+    var showResult by remember { mutableStateOf(false) }
+    
+    // Primary color for this dialog (Emerald Green - different from LoanSimulationDialog)
+    val primaryColor = Color(0xFF059669) // Emerald 600
+    val secondaryColor = Color(0xFF10B981) // Emerald 500
+    val bgGradient = listOf(Color(0xFF064E3B), Color(0xFF059669)) // Dark to light emerald
+    
+    // Reset values when plafond changes
+    LaunchedEffect(selectedPlafond) {
+        selectedPlafond?.let {
+            if (amountText.isEmpty()) amountText = "5000000"
+            tenor = it.tenorMin
+            showResult = false
+        }
+    }
+    
+    // Calculations
+    val amount = try { BigDecimal(amountText) } catch (e: Exception) { BigDecimal.ZERO }
+    val isAmountValid = selectedPlafond?.let { amount > BigDecimal.ZERO && amount <= it.maxAmount } ?: false
+    
+    val totalInterest = selectedPlafond?.let {
+        amount.multiply(it.interestRate)
+            .divide(BigDecimal("100"), 2, RoundingMode.HALF_UP)
+            .multiply(BigDecimal(tenor))
+    } ?: BigDecimal.ZERO
+    
+    val totalRepayment = amount.add(totalInterest)
+    
+    val monthlyInstallment = if (tenor > 0) {
+        totalRepayment.divide(BigDecimal(tenor), 0, RoundingMode.CEILING)
+    } else {
+        BigDecimal.ZERO
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)) // Emerald 50
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header with gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                colors = bgGradient,
+                                start = Offset(0f, 0f),
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            )
+                        )
+                ) {
+                    // Decorative pattern
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        // Diamond pattern
+                        for (i in 0..5) {
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.05f),
+                                center = Offset(size.width * (0.1f + i * 0.2f), size.height * 0.5f),
+                                radius = size.width * 0.15f
+                            )
+                        }
+                    }
+                    
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🧮", fontSize = 20.sp)
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        "Simulasi Pinjaman",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "Tanpa perlu login",
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                            
+                            IconButton(
+                                onClick = onDismiss,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Close",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Step Indicator
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StepIndicator(
+                                step = 1,
+                                label = "Pilih Plafond",
+                                isActive = currentStep == 1,
+                                isCompleted = currentStep > 1,
+                                primaryColor = primaryColor
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(2.dp)
+                                    .background(
+                                        if (currentStep > 1) Color.White
+                                        else Color.White.copy(alpha = 0.3f)
+                                    )
+                            )
+                            
+                            StepIndicator(
+                                step = 2,
+                                label = "Hitung",
+                                isActive = currentStep == 2,
+                                isCompleted = false,
+                                primaryColor = primaryColor
+                            )
+                        }
+                    }
+                }
+                
+                // Content
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                ) {
+                    when (currentStep) {
+                        1 -> StandaloneStep1SelectPlafond(
+                            plafonds = plafonds,
+                            selectedPlafond = selectedPlafond,
+                            onSelectPlafond = { selectedPlafond = it },
+                            primaryColor = primaryColor
+                        )
+                        2 -> StandaloneStep2Calculate(
+                            plafond = selectedPlafond!!,
+                            amountText = amountText,
+                            onAmountChange = { 
+                                amountText = it.filter { c -> c.isDigit() }
+                                showResult = false
+                            },
+                            tenor = tenor,
+                            onTenorChange = { 
+                                tenor = it
+                                showResult = false
+                            },
+                            isAmountValid = isAmountValid,
+                            showResult = showResult,
+                            onCalculate = { showResult = true },
+                            amount = amount,
+                            totalInterest = totalInterest,
+                            totalRepayment = totalRepayment,
+                            monthlyInstallment = monthlyInstallment,
+                            primaryColor = primaryColor,
+                            secondaryColor = secondaryColor
+                        )
+                    }
+                }
+                
+                // Bottom Navigation
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (currentStep > 1) {
+                            OutlinedButton(
+                                onClick = { currentStep-- },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = primaryColor
+                                ),
+                                border = BorderStroke(1.dp, primaryColor)
+                            ) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Kembali", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        
+                        Button(
+                            onClick = {
+                                if (currentStep == 1 && selectedPlafond != null) {
+                                    currentStep = 2
+                                } else if (currentStep == 2) {
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = when (currentStep) {
+                                1 -> selectedPlafond != null
+                                2 -> true
+                                else -> false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryColor,
+                                disabledContainerColor = Color.LightGray
+                            )
+                        ) {
+                            Text(
+                                when (currentStep) {
+                                    1 -> "Lanjutkan"
+                                    else -> "Selesai"
+                                },
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (currentStep == 1) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepIndicator(
+    step: Int,
+    label: String,
+    isActive: Boolean,
+    isCompleted: Boolean,
+    primaryColor: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        isCompleted -> Color.White
+                        isActive -> Color.White
+                        else -> Color.White.copy(alpha = 0.3f)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isCompleted) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = primaryColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                Text(
+                    "$step",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isActive) primaryColor else Color.Gray
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            label,
+            fontSize = 9.sp,
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+            color = if (isActive || isCompleted) Color.White else Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun StandaloneStep1SelectPlafond(
+    plafonds: List<Plafond>,
+    selectedPlafond: Plafond?,
+    onSelectPlafond: (Plafond) -> Unit,
+    primaryColor: Color
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                "Pilih Jenis Plafond",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF064E3B)
+            )
+            Text(
+                "Pilih plafond yang sesuai dengan kebutuhan Anda",
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        
+        items(plafonds) { plafond ->
+            val isSelected = selectedPlafond?.id == plafond.id
+            val plafondColor = getPlafondColor(plafond.name)
+            
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelectPlafond(plafond) },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) primaryColor.copy(alpha = 0.1f) else Color.White
+                ),
+                border = if (isSelected) BorderStroke(2.dp, primaryColor) else null,
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Plafond color indicator
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(plafondColor, plafondColor.copy(alpha = 0.7f))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            plafond.name.first().toString(),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            plafond.name,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black.copy(alpha = 0.85f)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            PlafondInfoChip(
+                                label = "Max ${formatCurrency(plafond.maxAmount)}",
+                                color = plafondColor
+                            )
+                            PlafondInfoChip(
+                                label = "${plafond.interestRate}%/bln",
+                                color = Color(0xFFFF9800)
+                            )
+                        }
+                    }
+                    
+                    // Selection indicator
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) primaryColor else Color.LightGray.copy(alpha = 0.3f)
+                            )
+                            .border(
+                                width = if (isSelected) 0.dp else 2.dp,
+                                color = if (isSelected) Color.Transparent else Color.LightGray,
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun PlafondInfoChip(label: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.1f)
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun StandaloneStep2Calculate(
+    plafond: Plafond,
+    amountText: String,
+    onAmountChange: (String) -> Unit,
+    tenor: Int,
+    onTenorChange: (Int) -> Unit,
+    isAmountValid: Boolean,
+    showResult: Boolean,
+    onCalculate: () -> Unit,
+    amount: BigDecimal,
+    totalInterest: BigDecimal,
+    totalRepayment: BigDecimal,
+    monthlyInstallment: BigDecimal,
+    primaryColor: Color,
+    secondaryColor: Color
+) {
+    val plafondColor = getPlafondColor(plafond.name)
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Selected Plafond Info
+        item {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = plafondColor.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, plafondColor.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(plafondColor),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            plafond.name.first().toString(),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            plafond.name,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = plafondColor
+                        )
+                        Text(
+                            "Bunga ${plafond.interestRate}%/bulan • Tenor ${plafond.tenorMin}-${plafond.tenorMax} bulan",
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Amount Input
+        item {
+            Column {
+                Text(
+                    "Jumlah Pinjaman",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = onAmountChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Masukkan jumlah") },
+                    prefix = { Text("Rp ", fontWeight = FontWeight.Bold, color = primaryColor) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        unfocusedBorderColor = Color.LightGray,
+                        cursorColor = primaryColor
+                    ),
+                    singleLine = true,
+                    isError = amountText.isNotEmpty() && !isAmountValid,
+                    supportingText = if (amountText.isNotEmpty() && !isAmountValid) {
+                        { Text("Maksimal ${formatCurrency(plafond.maxAmount)}", color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+                
+                // Quick amount chips
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("5jt" to "5000000", "10jt" to "10000000", "25jt" to "25000000", "50jt" to "50000000").forEach { (label, value) ->
+                        val isDisabled = BigDecimal(value) > plafond.maxAmount
+                        val isSelected = amountText == value
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { if (!isDisabled) onAmountChange(value) },
+                            label = { Text(label, fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isDisabled,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = primaryColor.copy(alpha = 0.2f),
+                                selectedLabelColor = primaryColor
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Tenor Input
+        item {
+            Column {
+                Text(
+                    "Tenor (Bulan)",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.Black.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Tenor stepper
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledIconButton(
+                        onClick = { if (tenor > plafond.tenorMin) onTenorChange(tenor - 1) },
+                        enabled = tenor > plafond.tenorMin,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = primaryColor,
+                            disabledContainerColor = Color.LightGray
+                        )
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Kurangi")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(24.dp))
+                    
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "$tenor",
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryColor
+                        )
+                        Text(
+                            "Bulan",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(24.dp))
+                    
+                    FilledIconButton(
+                        onClick = { if (tenor < plafond.tenorMax) onTenorChange(tenor + 1) },
+                        enabled = tenor < plafond.tenorMax,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = primaryColor,
+                            disabledContainerColor = Color.LightGray
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Tambah")
+                    }
+                }
+                
+                // Slider
+                Slider(
+                    value = tenor.toFloat(),
+                    onValueChange = { onTenorChange(it.toInt()) },
+                    valueRange = plafond.tenorMin.toFloat()..plafond.tenorMax.toFloat(),
+                    steps = plafond.tenorMax - plafond.tenorMin - 1,
+                    colors = SliderDefaults.colors(
+                        thumbColor = primaryColor,
+                        activeTrackColor = primaryColor,
+                        inactiveTrackColor = primaryColor.copy(alpha = 0.2f)
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("${plafond.tenorMin} bulan", fontSize = 10.sp, color = Color.Gray)
+                    Text("${plafond.tenorMax} bulan", fontSize = 10.sp, color = Color.Gray)
+                }
+            }
+        }
+        
+        // Calculate Button
+        item {
+            Button(
+                onClick = onCalculate,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                enabled = isAmountValid,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = secondaryColor,
+                    disabledContainerColor = Color.LightGray
+                )
+            ) {
+                Icon(Icons.Default.Calculate, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Hitung Simulasi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+        
+        // Result (Animated)
+        item {
+            AnimatedVisibility(
+                visible = showResult && isAmountValid,
+                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(animationSpec = tween(300)),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                StandaloneResultCard(
+                    plafond = plafond,
+                    amount = amount,
+                    tenor = tenor,
+                    totalInterest = totalInterest,
+                    totalRepayment = totalRepayment,
+                    monthlyInstallment = monthlyInstallment,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor
+                )
+            }
+        }
+        
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun StandaloneResultCard(
+    plafond: Plafond,
+    amount: BigDecimal,
+    tenor: Int,
+    totalInterest: BigDecimal,
+    totalRepayment: BigDecimal,
+    monthlyInstallment: BigDecimal,
+    primaryColor: Color,
+    secondaryColor: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column {
+            // Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(primaryColor, secondaryColor)
+                        )
+                    )
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("📊", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Hasil Simulasi",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            plafond.name,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+            
+            // Content
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StandaloneResultRow(emoji = "💰", label = "Pinjaman Pokok", value = formatCurrency(amount))
+                StandaloneResultRow(emoji = "📅", label = "Tenor", value = "$tenor Bulan")
+                StandaloneResultRow(emoji = "📈", label = "Bunga per Bulan", value = "${plafond.interestRate}%")
+                
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                
+                StandaloneResultRow(
+                    emoji = "💸",
+                    label = "Total Bunga",
+                    value = formatCurrency(totalInterest),
+                    valueColor = Color(0xFFFF9800)
+                )
+                StandaloneResultRow(
+                    emoji = "💳",
+                    label = "Total Pelunasan",
+                    value = formatCurrency(totalRepayment),
+                    valueColor = primaryColor,
+                    isBold = true
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Monthly highlight
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = secondaryColor
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                "Cicilan per Bulan",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                            Text(
+                                "Estimasi",
+                                fontSize = 9.sp,
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                        Text(
+                            formatCurrency(monthlyInstallment),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
+                
+                // Disclaimer
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFFFBEB) // Amber 50
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text("ℹ️", fontSize = 10.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Hasil simulasi ini bersifat estimasi. Untuk mengajukan pinjaman, silakan login terlebih dahulu.",
+                            fontSize = 9.sp,
+                            color = Color(0xFF92400E),
+                            lineHeight = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StandaloneResultRow(
+    emoji: String,
+    label: String,
+    value: String,
+    valueColor: Color = Color.Black,
+    isBold: Boolean = false
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(emoji, fontSize = 14.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
+        }
+        Text(
+            value,
+            fontSize = if (isBold) 14.sp else 12.sp,
+            fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
+            color = valueColor
+        )
     }
 }
 
