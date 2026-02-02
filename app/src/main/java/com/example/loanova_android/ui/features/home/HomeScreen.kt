@@ -139,7 +139,8 @@ fun HomeScreen(
                 onNavigateToLogin = onNavigateToLogin,
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
                 onNavigateToLoanApplication = onNavigateToLoanApplication,
-                onProfileRequired = { showProfileRequiredDialog = true }
+                onProfileRequired = { showProfileRequiredDialog = true },
+                onLogout = { viewModel.logout() }
             )
 
             3 -> ProfileScreen(
@@ -175,7 +176,8 @@ fun HomeContent(
     onNavigateToLogin: () -> Unit,
     onNavigateToActivePlafond: () -> Unit,
     onNavigateToLoanApplication: () -> Unit,
-    onProfileRequired: () -> Unit
+    onProfileRequired: () -> Unit,
+    onLogout: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -184,7 +186,7 @@ fun HomeContent(
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         // Hero Section dengan Greeting
-        item { HeroSection(onNavigateToLogin, uiState.isLoggedIn, uiState.username) }
+        item { HeroSection(onNavigateToLogin, uiState.isLoggedIn, uiState.username, onLogout) }
         
         // Quick Menu dengan Glassmorphism
         item { 
@@ -544,7 +546,70 @@ fun formatCurrency(amount: java.math.BigDecimal): String {
 
 
 @Composable
-fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: String? = null) {
+fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: String? = null, onLogout: () -> Unit = {}) {
+    // State for logout confirmation dialog
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    
+    // Logout Confirmation Dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEF4444).copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    "Keluar dari Akun?",
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Text(
+                    "Apakah Anda yakin ingin keluar dari akun Anda?",
+                    textAlign = TextAlign.Center,
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Ya, Keluar", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showLogoutDialog = false },
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.Gray)
+                ) {
+                    Text("Batal", color = Color.Gray)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
+    }
+    
     // Get time-based greeting
     val greeting = remember {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -684,6 +749,27 @@ fun HeroSection(onNavigateToLogin: () -> Unit, isLoggedIn: Boolean, username: St
                     Text("Masuk Sekarang", color = Color(0xFF1A237E), fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = Color(0xFF1A237E))
+                }
+            } else {
+                // Logout button for logged in users
+                Spacer(modifier = Modifier.height(20.dp))
+                OutlinedButton(
+                    onClick = { showLogoutDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Keluar", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

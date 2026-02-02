@@ -45,6 +45,12 @@ import java.util.Locale
 import java.util.Objects
 import androidx.compose.ui.window.Dialog
 
+// Modern Blue Color Palette for Edit Profile (matching CompleteProfileScreen)
+private val EditPrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
+private val EditSecondaryColor = Color(0xFF3B82F6)    // Vibrant Blue
+private val EditAccentColor = Color(0xFF60A5FA)       // Light Blue Accent
+private val EditBackgroundColor = Color(0xFFF0F9FF)   // Light Blue Background
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -180,13 +186,14 @@ fun EditProfileScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LoanovaBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = EditPrimaryColor)
             )
-        }
+        },
+        containerColor = EditBackgroundColor
     ) { padding ->
         if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = LoanovaBlue)
+                CircularProgressIndicator(color = EditSecondaryColor)
             }
         } else {
             Column(
@@ -306,7 +313,7 @@ fun EditProfileScreen(
                              Icon(
                                 Icons.Outlined.DateRange, 
                                 contentDescription = null,
-                                tint = if (uiState.fieldErrors?.get("birthDate") != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                                tint = if (uiState.fieldErrors?.get("birthDate") != null) MaterialTheme.colorScheme.error else EditSecondaryColor
                              ) 
                         },
                         modifier = Modifier
@@ -316,7 +323,7 @@ fun EditProfileScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = Color.Black,
                             disabledBorderColor = if(uiState.fieldErrors?.get("birthDate") != null) MaterialTheme.colorScheme.error else  Color.LightGray.copy(alpha = 0.7f),
-                            disabledLeadingIconColor = LoanovaBlue,
+                            disabledLeadingIconColor = EditSecondaryColor,
                             disabledLabelColor = if(uiState.fieldErrors?.get("birthDate") != null) MaterialTheme.colorScheme.error else Color.Gray,
                             errorBorderColor = MaterialTheme.colorScheme.error
                         ),
@@ -347,14 +354,14 @@ fun EditProfileScreen(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider()
+                HorizontalDivider(color = EditSecondaryColor.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
                     "Update Dokumen (Opsional)", 
                     style = MaterialTheme.typography.titleMedium, 
                     fontWeight = FontWeight.Bold,
-                    color = LoanovaBlue
+                    color = EditPrimaryColor
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -365,13 +372,21 @@ fun EditProfileScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Button(
-                    onClick = { viewModel.updateProfile() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp).shadow(8.dp, RoundedCornerShape(16.dp)),
-                    colors = ButtonDefaults.buttonColors(containerColor = LoanovaBlue),
-                    shape = RoundedCornerShape(16.dp)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = 8.dp,
+                    color = EditPrimaryColor,
+                    onClick = { viewModel.updateProfile() }
                 ) {
-                    Text("Simpan Perubahan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Simpan Perubahan", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
                 }
                 Spacer(modifier = Modifier.height(48.dp))
             }
@@ -409,7 +424,7 @@ fun EditProfileTextField(
                 Icon(
                     imageVector = icon, 
                     contentDescription = null,
-                    tint = if (errorMessage != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                    tint = if (errorMessage != null) MaterialTheme.colorScheme.error else EditSecondaryColor
                 ) 
             },
             isError = errorMessage != null,
@@ -418,9 +433,9 @@ fun EditProfileTextField(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = LoanovaBlue,
-                focusedLabelColor = LoanovaBlue,
-                cursorColor = LoanovaBlue,
+                focusedBorderColor = EditSecondaryColor,
+                focusedLabelColor = EditPrimaryColor,
+                cursorColor = EditSecondaryColor,
                 unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 errorLabelColor = MaterialTheme.colorScheme.error
@@ -446,12 +461,12 @@ fun FilePickerItem(label: String, file: File?, onClick: () -> Unit, error: Strin
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF8FAFC)),
-            elevation = CardDefaults.cardElevation(0.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF0F9FF)),
+            elevation = CardDefaults.cardElevation(2.dp),
             border = androidx.compose.foundation.BorderStroke(
                 width = 1.dp, 
-                color = if (error != null) MaterialTheme.colorScheme.error else Color.LightGray.copy(alpha = 0.5f)
+                color = if (error != null) MaterialTheme.colorScheme.error else EditSecondaryColor.copy(alpha = 0.3f)
             )
         ) {
             Row(
@@ -460,15 +475,18 @@ fun FilePickerItem(label: String, file: File?, onClick: () -> Unit, error: Strin
             ) {
                 Box(
                      modifier = Modifier
-                        .size(40.dp)
+                        .size(44.dp)
                         .clip(androidx.compose.foundation.shape.CircleShape)
-                        .background(if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else LoanovaBlue.copy(alpha = 0.1f)),
+                        .background(
+                            if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) 
+                            else EditSecondaryColor.copy(alpha = 0.15f)
+                        ),
                      contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.UploadFile, 
                         contentDescription = null, 
-                        tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                        tint = if (error != null) MaterialTheme.colorScheme.error else EditSecondaryColor
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
@@ -477,16 +495,16 @@ fun FilePickerItem(label: String, file: File?, onClick: () -> Unit, error: Strin
                         text = label, 
                         fontWeight = FontWeight.SemiBold, 
                         fontSize = 14.sp,
-                        color = if (error != null) MaterialTheme.colorScheme.error else Color.Unspecified
+                        color = if (error != null) MaterialTheme.colorScheme.error else EditPrimaryColor
                     )
                     if (file != null) {
-                        Text("File terpilih", style = MaterialTheme.typography.bodySmall, color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                        Text("File terpilih", style = MaterialTheme.typography.bodySmall, color = EditSecondaryColor, fontWeight = FontWeight.Bold)
                     } else {
                         Text("Klik untuk ganti foto", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
                 }
                 if (file != null) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
                 }
             }
         }
@@ -511,21 +529,21 @@ fun ImageSourceOptionDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             modifier = Modifier.padding(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
+            elevation = CardDefaults.cardElevation(12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Pilih Sumber Gambar",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = LoanovaBlue
+                    color = EditPrimaryColor
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -538,20 +556,20 @@ fun ImageSourceOptionDialog(
                     ) {
                         Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
-                            color = LoanovaBlue.copy(alpha = 0.1f),
-                            modifier = Modifier.size(64.dp)
+                            color = EditSecondaryColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = "Kamera",
-                                    tint = LoanovaBlue,
-                                    modifier = Modifier.size(32.dp)
+                                    tint = EditSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = EditPrimaryColor)
                     }
 
                     // Gallery Option
@@ -561,26 +579,26 @@ fun ImageSourceOptionDialog(
                     ) {
                          Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
-                            color = LoanovaLightBlue.copy(alpha = 0.1f),
-                            modifier = Modifier.size(64.dp)
+                            color = EditAccentColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoLibrary,
                                     contentDescription = "Galeri",
-                                    tint = LoanovaBlue,
-                                    modifier = Modifier.size(32.dp)
+                                    tint = EditSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = EditPrimaryColor)
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 TextButton(onClick = onDismiss) {
-                    Text("Batal", color = Color.Gray)
+                    Text("Batal", color = Color.Gray, fontWeight = FontWeight.Medium)
                 }
             }
         }

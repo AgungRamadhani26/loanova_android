@@ -64,6 +64,15 @@ import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.Locale
 
+// Modern Blue Color Palette for Loan Application
+private val LoanPrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
+private val LoanSecondaryColor = Color(0xFF3B82F6)    // Vibrant Blue
+private val LoanAccentColor = Color(0xFF60A5FA)       // Light Blue Accent
+private val LoanGradientStart = Color(0xFF0F172A)     // Dark Navy
+private val LoanGradientMid = Color(0xFF1E3A5F)       // Medium Navy
+private val LoanGradientEnd = Color(0xFF1E40AF)       // Blue End
+private val LoanBackgroundColor = Color(0xFFF0F9FF)   // Light Blue Background
+
 /**
  * Loan Application Screen - Form untuk mengajukan pinjaman.
  * 
@@ -176,7 +185,7 @@ fun LoanApplicationScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = LoanovaBlue,
+                    containerColor = LoanPrimaryColor,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -186,11 +195,7 @@ fun LoanApplicationScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(LoanovaBlue.copy(alpha = 0.05f), Color.White)
-                    )
-                )
+                .background(LoanBackgroundColor)
                 .padding(padding)
         ) {
             Column(
@@ -363,25 +368,21 @@ fun LoanApplicationScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Submit Button
-                Button(
-                    onClick = {
-                        viewModel.submitLoanApplication(
-                            savingBookCoverFile,
-                            payslipPhotoFile
-                        )
-                    },
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(elevation = 8.dp, shape = RoundedCornerShape(16.dp)),
-                    enabled = !uiState.isSubmitting,
+                        .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = LoanovaBlue,
-                        contentColor = Color.White,
-                        disabledContainerColor = Color.LightGray
-                    ),
-                    contentPadding = PaddingValues(0.dp)
+                    shadowElevation = 8.dp,
+                    color = if (uiState.isSubmitting) Color.LightGray else LoanPrimaryColor,
+                    onClick = {
+                        if (!uiState.isSubmitting) {
+                            viewModel.submitLoanApplication(
+                                savingBookCoverFile,
+                                payslipPhotoFile
+                            )
+                        }
+                    }
                 ) {
                     Box(
                         modifier = Modifier
@@ -390,7 +391,7 @@ fun LoanApplicationScreen(
                                 if (!uiState.isSubmitting) {
                                     Modifier.background(
                                         Brush.horizontalGradient(
-                                            colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                                            colors = listOf(LoanPrimaryColor, LoanSecondaryColor)
                                         )
                                     )
                                 } else Modifier
@@ -404,7 +405,7 @@ fun LoanApplicationScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Ajukan Pinjaman Sekarang", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("Ajukan Pinjaman Sekarang", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
                         }
                     }
                 }
@@ -513,9 +514,9 @@ private fun <T> DropdownCard(
                 placeholder = { Text("Pilih $label", fontSize = 14.sp) },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = LoanovaBlue,
-                    unfocusedBorderColor = LoanovaBlue.copy(alpha = 0.4f),
-                    focusedLabelColor = LoanovaBlue,
+                    focusedBorderColor = LoanSecondaryColor,
+                    unfocusedBorderColor = LoanSecondaryColor.copy(alpha = 0.4f),
+                    focusedLabelColor = LoanPrimaryColor,
                     errorBorderColor = MaterialTheme.colorScheme.error
                 ),
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
@@ -576,7 +577,7 @@ private fun AmountSliderCard(
             formatCurrency(currentAmount),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+            color = if (error != null) MaterialTheme.colorScheme.error else LoanPrimaryColor
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -586,8 +587,8 @@ private fun AmountSliderCard(
             value = sliderPosition,
             onValueChange = { onSliderChange(it) },
             colors = SliderDefaults.colors(
-                thumbColor = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue,
-                activeTrackColor = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                thumbColor = if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor,
+                activeTrackColor = if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor
             )
         )
         
@@ -610,10 +611,10 @@ private fun AmountSliderCard(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = LoanovaBlue,
-                unfocusedBorderColor = LoanovaBlue.copy(alpha = 0.4f),
-                focusedLabelColor = LoanovaBlue,
-                cursorColor = LoanovaBlue,
+                focusedBorderColor = LoanSecondaryColor,
+                unfocusedBorderColor = LoanSecondaryColor.copy(alpha = 0.4f),
+                focusedLabelColor = LoanPrimaryColor,
+                cursorColor = LoanSecondaryColor,
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 errorLabelColor = MaterialTheme.colorScheme.error
             ),
@@ -654,7 +655,7 @@ private fun TenorSliderCard(
             "$tenor Bulan",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+            color = if (error != null) MaterialTheme.colorScheme.error else LoanPrimaryColor
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -667,8 +668,8 @@ private fun TenorSliderCard(
                 onTenorChange(newTenor)
             },
             colors = SliderDefaults.colors(
-                thumbColor = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue,
-                activeTrackColor = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                thumbColor = if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor,
+                activeTrackColor = if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor
             )
         )
         
@@ -700,9 +701,9 @@ private fun FormCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             // Gradient Header
@@ -711,10 +712,10 @@ private fun FormCard(
                     .fillMaxWidth()
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                            colors = listOf(LoanPrimaryColor, LoanSecondaryColor)
                         )
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Text(
                     text = title,
@@ -745,14 +746,14 @@ private fun LoanTextField(
             value = value,
             onValueChange = onValueChange,
             label = { Text(label, fontSize = 14.sp) }, // Smaller font
-            leadingIcon = { Icon(icon, contentDescription = label, tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue) },
+            leadingIcon = { Icon(icon, contentDescription = label, tint = if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = LoanovaBlue,
-                unfocusedBorderColor = LoanovaBlue.copy(alpha = 0.4f),
-                focusedLabelColor = LoanovaBlue,
-                cursorColor = LoanovaBlue,
+                focusedBorderColor = LoanSecondaryColor,
+                unfocusedBorderColor = LoanSecondaryColor.copy(alpha = 0.4f),
+                focusedLabelColor = LoanPrimaryColor,
+                cursorColor = LoanSecondaryColor,
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 errorLabelColor = MaterialTheme.colorScheme.error
             ),
@@ -780,8 +781,8 @@ private fun FileUploadRow(
     error: String? = null,
     onClick: () -> Unit
 ) {
-    val borderColor = if (uri != null) Color(0xFF4CAF50) else if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue.copy(alpha = 0.5f)
-    val backgroundColor = if (uri != null) Color(0xFFE8F5E9) else if (error != null) Color(0xFFFDE8E8) else LoanovaBlue.copy(alpha = 0.05f)
+    val borderColor = if (uri != null) Color(0xFF10B981) else if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor.copy(alpha = 0.5f)
+    val backgroundColor = if (uri != null) Color(0xFFECFDF5) else if (error != null) Color(0xFFFDE8E8) else LoanSecondaryColor.copy(alpha = 0.05f)
     
     // Dashed border effect for empty state
     val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
@@ -793,14 +794,14 @@ private fun FileUploadRow(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(backgroundColor)
                 .clickable { onClick() }
                 .drawBehind {
                     drawRoundRect(
                         color = borderColor,
                         style = stroke,
-                        cornerRadius = CornerRadius(12.dp.toPx())
+                        cornerRadius = CornerRadius(16.dp.toPx())
                     )
                 }
                 .padding(16.dp)
@@ -808,7 +809,7 @@ private fun FileUploadRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(Color.White),
                     contentAlignment = Alignment.Center
@@ -816,15 +817,15 @@ private fun FileUploadRow(
                     Icon(
                         Icons.Filled.Upload,
                         contentDescription = "Upload",
-                        tint = if (uri != null) Color(0xFF4CAF50) else if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                        tint = if (uri != null) Color(0xFF10B981) else if (error != null) MaterialTheme.colorScheme.error else LoanSecondaryColor
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.Black.copy(alpha=0.8f))
+                    Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LoanPrimaryColor)
                     Spacer(modifier = Modifier.height(2.dp))
                     if (uri != null) {
-                        Text("File berhasil dipilih ✓", fontSize = 12.sp, color = Color(0xFF4CAF50))
+                        Text("File berhasil dipilih ✓", fontSize = 12.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
                     } else if (error != null) {
                         Text("# $error", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                     } else {
@@ -1098,14 +1099,14 @@ private fun LoanPreviewCard(
                                 icon = "💰",
                                 label = "Jumlah Pinjaman",
                                 value = formatCurrency(loanAmount),
-                                accentColor = LoanovaBlue
+                                accentColor = LoanPrimaryColor
                             )
                             ModernInfoBox(
                                 modifier = Modifier.weight(1f),
                                 icon = "📅",
                                 label = "Tenor",
                                 value = "$tenor Bulan",
-                                accentColor = LoanovaBlue
+                                accentColor = LoanPrimaryColor
                             )
                         }
                         
