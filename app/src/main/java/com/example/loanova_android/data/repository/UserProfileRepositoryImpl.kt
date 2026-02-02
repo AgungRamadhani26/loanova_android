@@ -59,61 +59,58 @@ class UserProfileRepositoryImpl @Inject constructor(
     override fun getMyProfile(): Flow<Resource<UserProfileResponse>> = flow {
         emit(Resource.Loading())
         
-        // 1. Check Local Cache (Snapshot)
-        var localProfile: com.example.loanova_android.data.local.entity.UserProfileEntity? = null
-        try {
-            localProfile = localDataSource.getMyProfile().firstOrNull()
-            if (localProfile != null) {
-                emit(Resource.Success(DataMappers.mapProfileEntityToResponse(localProfile)))
-            }
+        // 1. Check Local Cache (sync - no Flow)
+        val localProfile = try {
+            localDataSource.getMyProfileSync()
         } catch (e: Exception) {
-            e.printStackTrace()
+            null
+        }
+        
+        // Emit cached data immediately if available
+        if (localProfile != null) {
+            emit(Resource.Success(DataMappers.mapProfileEntityToResponse(localProfile), isFromCache = true))
         }
 
         // 2. Network Sync
-        try {
+        val networkResult = try {
             val response = api.getMyProfile()
             val body = response.body()
             
             if (response.isSuccessful && body != null && body.success && body.data != null) {
-                // Success: Update DB and observe DB for real-time updates
+                // Success: Update DB
                 val entity = DataMappers.mapProfileResponseToEntity(body.data)
                 localDataSource.insertProfile(entity)
-                
-                // Continue emitting from DB (Single Source of Truth)
-                emitAll(localDataSource.getMyProfile().map { 
-                     if (it != null) Resource.Success(DataMappers.mapProfileEntityToResponse(it))
-                     else Resource.Loading()
-                })
+                Resource.Success(body.data)
             } else {
                 // Error Handling
                 if (response.code() == 404) {
-                    emit(Resource.Error("PROFILE_NOT_FOUND"))
-                    // Stop here. Do NOT emit from empty DB.
+                    Resource.Error<UserProfileResponse>("PROFILE_NOT_FOUND")
                 } else {
                     val errorMsg = if (body?.message.isNullOrBlank()) "Gagal memuat profil" else body?.message!!
-                    
-                    if (localProfile != null) {
-                        // Offline/Error but have cache -> Continue showing cache via DB flow
-                         emitAll(localDataSource.getMyProfile().map { 
-                             if (it != null) Resource.Success(DataMappers.mapProfileEntityToResponse(it))
-                             else Resource.Loading()
-                        })
-                    } else {
-                        emit(Resource.Error(errorMsg))
-                    }
+                    Resource.Error<UserProfileResponse>(errorMsg)
                 }
             }
         } catch (e: Exception) {
-            // Network Exception
-            if (localProfile != null) {
-                 emitAll(localDataSource.getMyProfile().map { 
-                     if (it != null) Resource.Success(DataMappers.mapProfileEntityToResponse(it))
-                     else Resource.Loading()
-                })
-            } else {
-                 emit(Resource.Error(e.message ?: "Koneksi Bermasalah"))
+            Resource.Error<UserProfileResponse>(e.message ?: "Koneksi Bermasalah")
+        }
+        
+        // 3. Handle network result
+        when (networkResult) {
+            is Resource.Success -> {
+                // Emit fresh data from network
+                emit(networkResult)
             }
+            is Resource.Error -> {
+                if (networkResult.message == "PROFILE_NOT_FOUND") {
+                    // Profile not found - always emit error, don't use cache
+                    emit(networkResult)
+                } else if (localProfile == null) {
+                    // No cache and network failed - emit error
+                    emit(networkResult)
+                }
+                // If network failed but we have cache, we already emitted cache above
+            }
+            else -> { /* Loading state - shouldn't happen */ }
         }
     }.flowOn(Dispatchers.IO)
 

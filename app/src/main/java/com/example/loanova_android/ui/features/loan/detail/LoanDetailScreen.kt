@@ -28,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.SubcomposeAsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.loanova_android.BuildConfig
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
@@ -247,6 +248,7 @@ private fun LoanDetailContent(
             title = "Detail Pinjaman",
             icon = Icons.Outlined.CreditCard
         ) {
+            DetailRow(label = "ID Pengajuan", value = "#${loan.id}", valueColor = DetailSecondaryColor)
             DetailRow(label = "Jenis Plafond", value = loan.plafondName)
             DetailRow(label = "Jumlah Pinjaman", value = formatCurrency(loan.amount))
             DetailRow(label = "Tenor", value = "${loan.tenor} Bulan")
@@ -439,6 +441,9 @@ private fun DocumentListItem(
                     model = ImageRequest.Builder(context)
                         .data(imageUrl)
                         .crossfade(true)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .networkCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = label,
                     modifier = Modifier
@@ -573,6 +578,9 @@ private fun ImagePreviewDialog(
                 model = ImageRequest.Builder(context)
                     .data(imageUrl)
                     .crossfade(true)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
                     .build(),
                 contentDescription = label,
                 modifier = Modifier

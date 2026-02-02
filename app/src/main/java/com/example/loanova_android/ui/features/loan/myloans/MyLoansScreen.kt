@@ -592,18 +592,36 @@ private fun LoanApplicationCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Plafond name & Status row
+                // ID & Plafond name row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        loan.plafondName,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MyLoansPrimaryColor
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            loan.plafondName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MyLoansPrimaryColor
+                        )
+                        // ID Badge
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = Color(0xFF3B82F6).copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                "#${loan.id}",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF3B82F6)
+                            )
+                        }
+                    }
                     
                     // Status Badge (compact)
                     Surface(

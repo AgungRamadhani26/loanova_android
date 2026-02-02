@@ -1,26 +1,37 @@
 package com.example.loanova_android.data.repository
 
 import com.example.loanova_android.core.common.Resource
+import com.example.loanova_android.data.local.dao.ApplicationHistoryDao
+import com.example.loanova_android.data.local.dao.LoanApplicationDao
+import com.example.loanova_android.data.mapper.DataMappers
 import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
 import com.example.loanova_android.data.remote.api.LoanApplicationApi
 import com.example.loanova_android.domain.repository.ILoanApplicationRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
 import javax.inject.Inject
 
 /**
  * Repository implementation untuk Loan Application operations.
+ * Menggunakan strategi offline-first untuk read operations:
+ * 1. Tampilkan cache local jika ada
+ * 2. Sync dengan network
+ * 3. Update cache dan emit dari cache (single source of truth)
  */
 class LoanApplicationRepository @Inject constructor(
-    private val loanApplicationApi: LoanApplicationApi
+    private val loanApplicationApi: LoanApplicationApi,
+    private val loanApplicationDao: LoanApplicationDao,
+    private val applicationHistoryDao: ApplicationHistoryDao
 ) : ILoanApplicationRepository {
     
     override suspend fun submitLoanApplication(
@@ -58,8 +69,11 @@ class LoanApplicationRepository @Inject constructor(
             
             if (response.isSuccessful) {
                 val body = response.body()
-                if (body != null && body.success) {
-                    emit(Resource.Success(body.data!!))
+                if (body != null && body.success && body.data != null) {
+                    // Success: Simpan ke cache local
+                    val entity = DataMappers.mapLoanApplicationResponseToEntity(body.data)
+                    loanApplicationDao.insert(entity)
+                    emit(Resource.Success(body.data))
                 } else {
                     emit(Resource.Error(body?.message ?: "Gagal mengajukan pinjaman"))
                 }
@@ -78,20 +92,59 @@ class LoanApplicationRepository @Inject constructor(
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
         }
-    }
+    }.flowOn(Dispatchers.IO)
     
+    /**
+     * Get My Applications - OFFLINE-FIRST
+     * 1. Emit Loading
+     * 2. Check local cache, emit jika ada
+     * 3. Fetch dari network
+     * 4. Jika sukses: update DB, emit dari DB
+     * 5. Jika error tapi ada cache: tampilkan cache
+     * 6. Jika error dan tidak ada cache: emit Error
+     */
     override suspend fun getMyApplications(): Flow<Resource<List<LoanApplicationResponse>>> = flow {
         emit(Resource.Loading())
         
+        // 1. Check Local Cache
+        var localData: List<com.example.loanova_android.data.local.entity.LoanApplicationEntity>? = null
+        try {
+            localData = loanApplicationDao.getAllApplications().firstOrNull()
+            if (!localData.isNullOrEmpty()) {
+                val cachedResponse = localData.map { DataMappers.mapLoanApplicationEntityToResponse(it) }
+                emit(Resource.Success(cachedResponse, isFromCache = true))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        // 2. Network Sync
         try {
             val response = loanApplicationApi.getMyApplications()
             
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null && body.success) {
-                    emit(Resource.Success(body.data ?: emptyList()))
+                    val networkData = body.data ?: emptyList()
+                    
+                    // Update cache: clear and insert fresh data
+                    loanApplicationDao.deleteAll()
+                    val entities = networkData.map { DataMappers.mapLoanApplicationResponseToEntity(it) }
+                    loanApplicationDao.insertAll(entities)
+                    
+                    // Emit from DB as single source of truth
+                    emitAll(loanApplicationDao.getAllApplications().map { list ->
+                        Resource.Success(list.map { DataMappers.mapLoanApplicationEntityToResponse(it) })
+                    })
                 } else {
-                    emit(Resource.Error(body?.message ?: "Gagal mengambil data pengajuan"))
+                    // API error but have cache -> continue showing cache
+                    if (!localData.isNullOrEmpty()) {
+                        emitAll(loanApplicationDao.getAllApplications().map { list ->
+                            Resource.Success(list.map { DataMappers.mapLoanApplicationEntityToResponse(it) }, isFromCache = true)
+                        })
+                    } else {
+                        emit(Resource.Error(body?.message ?: "Gagal mengambil data pengajuan"))
+                    }
                 }
             } else {
                 val errorBody = response.errorBody()?.string()
@@ -102,25 +155,70 @@ class LoanApplicationRepository @Inject constructor(
                 } catch (e: Exception) {
                     "Gagal mengambil data pengajuan"
                 }
-                emit(Resource.Error(errorMessage))
+                
+                // HTTP error but have cache -> continue showing cache
+                if (!localData.isNullOrEmpty()) {
+                    emitAll(loanApplicationDao.getAllApplications().map { list ->
+                        Resource.Success(list.map { DataMappers.mapLoanApplicationEntityToResponse(it) }, isFromCache = true)
+                    })
+                } else {
+                    emit(Resource.Error(errorMessage))
+                }
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            // Network exception but have cache -> continue showing cache
+            if (!localData.isNullOrEmpty()) {
+                emitAll(loanApplicationDao.getAllApplications().map { list ->
+                    Resource.Success(list.map { DataMappers.mapLoanApplicationEntityToResponse(it) }, isFromCache = true)
+                })
+            } else {
+                emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            }
         }
-    }
+    }.flowOn(Dispatchers.IO)
     
+    /**
+     * Get Application Detail - OFFLINE-FIRST
+     */
     override suspend fun getApplicationDetail(id: Long): Flow<Resource<LoanApplicationResponse>> = flow {
         emit(Resource.Loading())
         
+        // 1. Check Local Cache
+        var localData: com.example.loanova_android.data.local.entity.LoanApplicationEntity? = null
+        try {
+            localData = loanApplicationDao.getApplicationById(id).firstOrNull()
+            if (localData != null) {
+                emit(Resource.Success(DataMappers.mapLoanApplicationEntityToResponse(localData), isFromCache = true))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        // 2. Network Sync
         try {
             val response = loanApplicationApi.getApplicationDetail(id)
             
             if (response.isSuccessful) {
                 val body = response.body()
-                if (body != null && body.success) {
-                    emit(Resource.Success(body.data!!))
+                if (body != null && body.success && body.data != null) {
+                    // Update cache
+                    val entity = DataMappers.mapLoanApplicationResponseToEntity(body.data)
+                    loanApplicationDao.insert(entity)
+                    
+                    // Emit from DB as single source of truth
+                    emitAll(loanApplicationDao.getApplicationById(id).map { 
+                        if (it != null) Resource.Success(DataMappers.mapLoanApplicationEntityToResponse(it))
+                        else Resource.Loading()
+                    })
                 } else {
-                    emit(Resource.Error(body?.message ?: "Gagal mengambil detail pengajuan"))
+                    if (localData != null) {
+                        emitAll(loanApplicationDao.getApplicationById(id).map { 
+                            if (it != null) Resource.Success(DataMappers.mapLoanApplicationEntityToResponse(it), isFromCache = true)
+                            else Resource.Loading()
+                        })
+                    } else {
+                        emit(Resource.Error(body?.message ?: "Gagal mengambil detail pengajuan"))
+                    }
                 }
             } else {
                 val errorBody = response.errorBody()?.string()
@@ -131,25 +229,72 @@ class LoanApplicationRepository @Inject constructor(
                 } catch (e: Exception) {
                     "Gagal mengambil detail pengajuan"
                 }
-                emit(Resource.Error(errorMessage))
+                
+                if (localData != null) {
+                    emitAll(loanApplicationDao.getApplicationById(id).map { 
+                        if (it != null) Resource.Success(DataMappers.mapLoanApplicationEntityToResponse(it), isFromCache = true)
+                        else Resource.Loading()
+                    })
+                } else {
+                    emit(Resource.Error(errorMessage))
+                }
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            if (localData != null) {
+                emitAll(loanApplicationDao.getApplicationById(id).map { 
+                    if (it != null) Resource.Success(DataMappers.mapLoanApplicationEntityToResponse(it), isFromCache = true)
+                    else Resource.Loading()
+                })
+            } else {
+                emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            }
         }
-    }
+    }.flowOn(Dispatchers.IO)
     
+    /**
+     * Get Application History - OFFLINE-FIRST
+     */
     override suspend fun getApplicationHistory(id: Long): Flow<Resource<List<ApplicationHistoryResponse>>> = flow {
         emit(Resource.Loading())
         
+        // 1. Check Local Cache
+        var localData: List<com.example.loanova_android.data.local.entity.ApplicationHistoryEntity>? = null
+        try {
+            localData = applicationHistoryDao.getHistoryByLoanId(id).firstOrNull()
+            if (!localData.isNullOrEmpty()) {
+                val cachedResponse = localData.map { DataMappers.mapApplicationHistoryEntityToResponse(it) }
+                emit(Resource.Success(cachedResponse, isFromCache = true))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        
+        // 2. Network Sync
         try {
             val response = loanApplicationApi.getApplicationHistory(id)
             
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null && body.success) {
-                    emit(Resource.Success(body.data ?: emptyList()))
+                    val networkData = body.data ?: emptyList()
+                    
+                    // Update cache: clear for this loan and insert fresh
+                    applicationHistoryDao.deleteByLoanId(id)
+                    val entities = networkData.map { DataMappers.mapApplicationHistoryResponseToEntity(it) }
+                    applicationHistoryDao.insertAll(entities)
+                    
+                    // Emit from DB
+                    emitAll(applicationHistoryDao.getHistoryByLoanId(id).map { list ->
+                        Resource.Success(list.map { DataMappers.mapApplicationHistoryEntityToResponse(it) })
+                    })
                 } else {
-                    emit(Resource.Error(body?.message ?: "Gagal mengambil riwayat pengajuan"))
+                    if (!localData.isNullOrEmpty()) {
+                        emitAll(applicationHistoryDao.getHistoryByLoanId(id).map { list ->
+                            Resource.Success(list.map { DataMappers.mapApplicationHistoryEntityToResponse(it) }, isFromCache = true)
+                        })
+                    } else {
+                        emit(Resource.Error(body?.message ?: "Gagal mengambil riwayat pengajuan"))
+                    }
                 }
             } else {
                 val errorBody = response.errorBody()?.string()
@@ -160,10 +305,23 @@ class LoanApplicationRepository @Inject constructor(
                 } catch (e: Exception) {
                     "Gagal mengambil riwayat pengajuan"
                 }
-                emit(Resource.Error(errorMessage))
+                
+                if (!localData.isNullOrEmpty()) {
+                    emitAll(applicationHistoryDao.getHistoryByLoanId(id).map { list ->
+                        Resource.Success(list.map { DataMappers.mapApplicationHistoryEntityToResponse(it) }, isFromCache = true)
+                    })
+                } else {
+                    emit(Resource.Error(errorMessage))
+                }
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            if (!localData.isNullOrEmpty()) {
+                emitAll(applicationHistoryDao.getHistoryByLoanId(id).map { list ->
+                    Resource.Success(list.map { DataMappers.mapApplicationHistoryEntityToResponse(it) }, isFromCache = true)
+                })
+            } else {
+                emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+            }
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }

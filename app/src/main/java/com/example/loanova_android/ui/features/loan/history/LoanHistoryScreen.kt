@@ -1,12 +1,8 @@
 package com.example.loanova_android.ui.features.loan.history
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,10 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -337,47 +330,82 @@ private fun HistoryContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoanSelector(
     loans: List<LoanApplicationResponse>,
     selectedLoan: LoanApplicationResponse?,
     onSelectLoan: (LoanApplicationResponse) -> Unit
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    val selectedText = selectedLoan?.let { loan ->
+        "#${loan.id} - ${loan.plafondName} - ${formatCurrency(loan.amount)}"
+    } ?: "Pilih Pengajuan"
+    
     Column {
         Text(
             "Pilih Pengajuan",
-            fontSize = 14.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            color = HistoryPrimaryColor
+            color = Color.Gray
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Spacer(modifier = Modifier.height(4.dp))
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
         ) {
-            items(loans) { loan ->
-                val isSelected = selectedLoan?.id == loan.id
-                Surface(
-                    modifier = Modifier.clickable { onSelectLoan(loan) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) HistorySecondaryColor else Color.White,
-                    shadowElevation = if (isSelected) 4.dp else 1.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            loan.plafondName,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) Color.White else HistoryPrimaryColor
-                        )
-                        Text(
-                            formatCurrency(loan.amount),
-                            fontSize = 11.sp,
-                            color = if (isSelected) Color.White.copy(alpha = 0.8f) else Color.Gray
-                        )
-                    }
+            OutlinedTextField(
+                value = selectedText,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = HistorySecondaryColor,
+                    unfocusedBorderColor = HistorySecondaryColor.copy(alpha = 0.4f),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                ),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = HistoryPrimaryColor
+                )
+            )
+            
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                loans.forEach { loan ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "#${loan.id} - ${loan.plafondName} - ${formatCurrency(loan.amount)}",
+                                fontSize = 14.sp,
+                                fontWeight = if (selectedLoan?.id == loan.id) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedLoan?.id == loan.id) HistorySecondaryColor else HistoryPrimaryColor
+                            )
+                        },
+                        onClick = {
+                            onSelectLoan(loan)
+                            expanded = false
+                        },
+                        leadingIcon = if (selectedLoan?.id == loan.id) {
+                            {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = HistorySecondaryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null
+                    )
                 }
             }
         }
@@ -397,6 +425,22 @@ private fun CurrentLoanCard(loan: LoanApplicationResponse) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // ID Pengajuan Badge
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = HistorySecondaryColor.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    "ID: #${loan.id}",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = HistorySecondaryColor
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -834,9 +878,9 @@ private fun formatRole(role: String): String {
     return when (role.uppercase()) {
         "CUSTOMER" -> "Customer"
         "MARKETING" -> "Marketing"
-        "BRANCHMANAGER" -> "Branch Manager"
+        "BRANCHMANAGER", "BRANCH_MANAGER" -> "Branch Manager"
         "BACKOFFICE" -> "Backoffice"
-        "SUPERADMIN" -> "Super Admin"
-        else -> role
+        "SUPERADMIN", "SUPER_ADMIN" -> "Super Admin"
+        else -> role.replace("_", " ")
     }
 }

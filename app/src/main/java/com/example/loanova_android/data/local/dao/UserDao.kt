@@ -22,6 +22,9 @@ interface UserDao {
     // --- Profile Methods ---
     @Query("SELECT * FROM user_profile_entity LIMIT 1") // Assuming single user per session for now
     fun getMyProfile(): Flow<UserProfileEntity?>
+    
+    @Query("SELECT * FROM user_profile_entity LIMIT 1")
+    suspend fun getMyProfileSync(): UserProfileEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: UserProfileEntity)
