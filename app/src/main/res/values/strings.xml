@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">loanova_android</string>
+    <string name="app_name">Loanova</string>
     
     <!-- Login Screen -->
     <string name="login_title">Loanova</string>

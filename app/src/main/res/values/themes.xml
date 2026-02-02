@@ -2,4 +2,12 @@
 <resources>
 
     <style name="Theme.Loanova_android" parent="android:Theme.Material.Light.NoActionBar" />
+    
+    <!-- Splash Screen Theme -->
+    <style name="Theme.Loanova_android.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#1D4ED8</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_nova</item>
+        <item name="windowSplashScreenIconBackgroundColor">#1D4ED8</item>
+        <item name="postSplashScreenTheme">@style/Theme.Loanova_android</item>
+    </style>
 </resources>
