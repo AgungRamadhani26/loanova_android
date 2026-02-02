@@ -1,6 +1,7 @@
 package com.example.loanova_android.domain.repository
 
 import com.example.loanova_android.core.common.Resource
+import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import kotlinx.coroutines.flow.Flow
@@ -26,4 +27,10 @@ interface ILoanApplicationRepository {
      * Get application detail by ID.
      */
     suspend fun getApplicationDetail(id: Long): Flow<Resource<LoanApplicationResponse>>
+    
+    /**
+     * Get application history by ID.
+     * Returns status change history for tracking loan progress.
+     */
+    suspend fun getApplicationHistory(id: Long): Flow<Resource<List<ApplicationHistoryResponse>>>
 }

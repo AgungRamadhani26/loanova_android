@@ -74,6 +74,9 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToLoanApplication = {
                     navController.navigate(Screen.LoanApplication.route)
+                },
+                onNavigateToLoanHistory = {
+                    navController.navigate(Screen.LoanHistory.route)
                 }
             )
         }
@@ -171,6 +174,18 @@ fun AppNavigation(navController: NavHostController) {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        // ====================================================================
+        // LOAN HISTORY SCREEN
+        // Route: "loan_history"
+        // ====================================================================
+        composable(Screen.LoanHistory.route) {
+            com.example.loanova_android.ui.features.loan.history.LoanHistoryScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

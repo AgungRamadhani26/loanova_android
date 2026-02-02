@@ -1,6 +1,7 @@
 package com.example.loanova_android.data.repository
 
 import com.example.loanova_android.core.common.Resource
+import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
 import com.example.loanova_android.data.remote.api.LoanApplicationApi
@@ -129,6 +130,35 @@ class LoanApplicationRepository @Inject constructor(
                     errorResponse.message
                 } catch (e: Exception) {
                     "Gagal mengambil detail pengajuan"
+                }
+                emit(Resource.Error(errorMessage))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+        }
+    }
+    
+    override suspend fun getApplicationHistory(id: Long): Flow<Resource<List<ApplicationHistoryResponse>>> = flow {
+        emit(Resource.Loading())
+        
+        try {
+            val response = loanApplicationApi.getApplicationHistory(id)
+            
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.success) {
+                    emit(Resource.Success(body.data ?: emptyList()))
+                } else {
+                    emit(Resource.Error(body?.message ?: "Gagal mengambil riwayat pengajuan"))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = try {
+                    val gson = com.google.gson.Gson()
+                    val errorResponse = gson.fromJson(errorBody, com.example.loanova_android.core.base.ApiResponse::class.java)
+                    errorResponse.message
+                } catch (e: Exception) {
+                    "Gagal mengambil riwayat pengajuan"
                 }
                 emit(Resource.Error(errorMessage))
             }

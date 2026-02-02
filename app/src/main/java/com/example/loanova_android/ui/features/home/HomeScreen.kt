@@ -73,7 +73,8 @@ fun HomeScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToActivePlafond: () -> Unit = {},
-    onNavigateToLoanApplication: () -> Unit = {}, // New callback for loan application
+    onNavigateToLoanApplication: () -> Unit = {}, // Callback for loan application
+    onNavigateToLoanHistory: () -> Unit = {}, // Callback for loan history
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -140,6 +141,7 @@ fun HomeScreen(
                 onNavigateToLogin = onNavigateToLogin,
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
                 onNavigateToLoanApplication = onNavigateToLoanApplication,
+                onNavigateToLoanHistory = onNavigateToLoanHistory,
                 onProfileRequired = { showProfileRequiredDialog = true },
                 onLogout = { viewModel.logout() }
             )
@@ -185,6 +187,7 @@ fun HomeContent(
     onNavigateToLogin: () -> Unit,
     onNavigateToActivePlafond: () -> Unit,
     onNavigateToLoanApplication: () -> Unit,
+    onNavigateToLoanHistory: () -> Unit,
     onProfileRequired: () -> Unit,
     onLogout: () -> Unit = {}
 ) {
@@ -203,6 +206,7 @@ fun HomeContent(
                 onNavigateToLogin = onNavigateToLogin, 
                 onNavigateToActivePlafond = onNavigateToActivePlafond,
                 onNavigateToLoanApplication = onNavigateToLoanApplication,
+                onNavigateToLoanHistory = onNavigateToLoanHistory,
                 onProfileRequired = onProfileRequired,
                 isLoggedIn = uiState.isLoggedIn,
                 hasProfile = uiState.hasProfile,
@@ -287,6 +291,7 @@ fun QuickMenuSection(
     onNavigateToLogin: () -> Unit, 
     onNavigateToActivePlafond: () -> Unit,
     onNavigateToLoanApplication: () -> Unit,
+    onNavigateToLoanHistory: () -> Unit,
     onProfileRequired: () -> Unit,
     isLoggedIn: Boolean,
     hasProfile: Boolean,
@@ -343,13 +348,22 @@ fun QuickMenuSection(
                                     onNavigateToActivePlafond()
                                 }
                             }
-                            "Ajukan", "Riwayat" -> {
+                            "Ajukan" -> {
                                 if (!isLoggedIn) {
                                     onNavigateToLogin()
                                 } else if (!hasProfile) {
                                     onProfileRequired()
                                 } else {
-                                    if (item.label == "Ajukan") onNavigateToLoanApplication()
+                                    onNavigateToLoanApplication()
+                                }
+                            }
+                            "Riwayat" -> {
+                                if (!isLoggedIn) {
+                                    onNavigateToLogin()
+                                } else if (!hasProfile) {
+                                    onProfileRequired()
+                                } else {
+                                    onNavigateToLoanHistory()
                                 }
                             }
                         }

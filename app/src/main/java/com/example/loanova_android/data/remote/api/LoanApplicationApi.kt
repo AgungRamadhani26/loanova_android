@@ -1,6 +1,7 @@
 package com.example.loanova_android.data.remote.api
 
 import com.example.loanova_android.core.base.ApiResponse
+import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -33,4 +34,13 @@ interface LoanApplicationApi {
     suspend fun getApplicationDetail(
         @Path("id") id: Long
     ): Response<ApiResponse<LoanApplicationResponse>>
+    
+    /**
+     * Get loan application history by ID.
+     * Returns list of status changes for tracking the loan progress.
+     */
+    @GET("api/loan-applications/{id}/history")
+    suspend fun getApplicationHistory(
+        @Path("id") id: Long
+    ): Response<ApiResponse<List<ApplicationHistoryResponse>>>
 }
