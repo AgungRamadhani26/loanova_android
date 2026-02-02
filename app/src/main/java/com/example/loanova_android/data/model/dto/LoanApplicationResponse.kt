@@ -16,6 +16,7 @@ data class LoanApplicationResponse(
     @SerializedName("plafondName") val plafondName: String,
     @SerializedName("amount") val amount: BigDecimal,
     @SerializedName("tenor") val tenor: Int,
+    @SerializedName("interestRateSnapshot") val interestRateSnapshot: BigDecimal?, // Bunga saat pengajuan
     @SerializedName("status") val status: String,
     @SerializedName("submittedAt") val submittedAt: String,
     

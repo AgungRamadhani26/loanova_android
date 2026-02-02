@@ -59,6 +59,7 @@ import com.example.loanova_android.domain.model.Plafond
 import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.ui.theme.*
 import com.example.loanova_android.ui.features.profile.ProfileScreen
+import com.example.loanova_android.ui.features.loan.myloans.MyLoansScreen
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -142,6 +143,14 @@ fun HomeScreen(
                 onProfileRequired = { showProfileRequiredDialog = true },
                 onLogout = { viewModel.logout() }
             )
+
+            1 -> Box(modifier = Modifier.padding(padding)) {
+                MyLoansScreen(
+                    onNavigateBack = null,
+                    onNavigateToDetail = null, // Can be implemented later for loan detail
+                    showBackButton = false
+                )
+            }
 
             3 -> ProfileScreen(
                 padding = padding,
