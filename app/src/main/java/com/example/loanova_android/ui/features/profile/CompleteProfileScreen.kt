@@ -40,6 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.Offset
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.R
 import com.example.loanova_android.ui.theme.LoanovaBlue
@@ -59,6 +62,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.Objects
+
+// Modern Blue Color Palette for Complete Profile
+private val ProfilePrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
+private val ProfileSecondaryColor = Color(0xFF3B82F6)    // Vibrant Blue
+private val ProfileAccentColor = Color(0xFF60A5FA)       // Light Blue Accent
+private val ProfileGradientStart = Color(0xFF0F172A)     // Dark Navy
+private val ProfileGradientMid = Color(0xFF1E3A5F)       // Medium Navy
+private val ProfileGradientEnd = Color(0xFF1E40AF)       // Blue End
+private val ProfileBackgroundColor = Color(0xFFF0F9FF)   // Light Blue Background
 
 
 /**
@@ -226,33 +238,64 @@ fun CompleteProfileScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LoanovaBackground)
+            .background(ProfileBackgroundColor)
     ) {
-        // Gradient Header
+        // Modern Gradient Header with Decorative Elements
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
+                .height(300.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(LoanovaBlue, LoanovaLightBlue)
+                        colors = listOf(
+                            ProfileGradientStart,
+                            ProfileGradientMid,
+                            ProfileGradientEnd
+                        )
                     )
                 )
         ) {
+            // Decorative circles
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.05f),
+                    radius = 180f,
+                    center = Offset(size.width * 0.9f, size.height * 0.2f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.08f),
+                    radius = 120f,
+                    center = Offset(size.width * 0.1f, size.height * 0.7f)
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.04f),
+                    radius = 200f,
+                    center = Offset(size.width * 0.5f, size.height * 1.1f)
+                )
+            }
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp, start = 16.dp, end = 16.dp)
             ) {
-                // Back Button
-                IconButton(
+                // Back Button with circular background
+                Surface(
                     onClick = onNavigateBack,
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.15f),
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Kembali",
+                            tint = Color.White
+                        )
+                    }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 Text(
                     text = "Lengkapi Profil",
@@ -260,14 +303,15 @@ fun CompleteProfileScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     ),
-                    modifier = Modifier.padding(start = 12.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Isi data diri Anda dengan benar untuk verifikasi akun.",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White.copy(alpha = 0.9f)
+                    text = "Isi data diri Anda dengan benar\nuntuk verifikasi akun.",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = Color.White.copy(alpha = 0.85f)
                     ),
-                    modifier = Modifier.padding(start = 12.dp, top = 4.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
         }
@@ -276,10 +320,10 @@ fun CompleteProfileScreen(
         Card(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 220.dp),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                .padding(top = 260.dp),
+            shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -442,13 +486,13 @@ fun CompleteProfileScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                HorizontalDivider(color = ProfileSecondaryColor.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
                     text = "Dokumen Pendukung",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = LoanovaBlue,
+                    color = ProfilePrimaryColor,
                     modifier = Modifier.align(Alignment.Start)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -474,39 +518,44 @@ fun CompleteProfileScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                Button(
-                    onClick = {
-                         val ktpFile = ktpUri?.let { uriToFile(context, it) }
-                         val profileFile = profileUri?.let { uriToFile(context, it) }
-                         val npwpFile = npwpUri?.let { uriToFile(context, it) }
-                         
-                         // Allow sending request even if files are null to let Backend handle validation
-                         viewModel.completeProfile(
-                             com.example.loanova_android.data.model.dto.UserProfileCompleteRequest(
-                                 fullName = fullName,
-                                 phoneNumber = phoneNumber,
-                                 userAddress = address,
-                                 nik = nik,
-                                 birthDate = birthDate,
-                                 npwpNumber = npwpNumber,
-                                 ktpPhoto = ktpFile,
-                                 profilePhoto = profileFile,
-                                 npwpPhoto = npwpFile
-                             )
-                        )
-                    },
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(8.dp, RoundedCornerShape(16.dp)),
+                        .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = LoanovaBlue),
-                    enabled = !uiState.isLoading
+                    shadowElevation = 8.dp,
+                    color = if (uiState.isLoading) ProfilePrimaryColor.copy(alpha = 0.5f) else ProfilePrimaryColor,
+                    onClick = {
+                        if (!uiState.isLoading) {
+                            val ktpFile = ktpUri?.let { uriToFile(context, it) }
+                            val profileFile = profileUri?.let { uriToFile(context, it) }
+                            val npwpFile = npwpUri?.let { uriToFile(context, it) }
+                            
+                            viewModel.completeProfile(
+                                com.example.loanova_android.data.model.dto.UserProfileCompleteRequest(
+                                    fullName = fullName,
+                                    phoneNumber = phoneNumber,
+                                    userAddress = address,
+                                    nik = nik,
+                                    birthDate = birthDate,
+                                    npwpNumber = npwpNumber,
+                                    ktpPhoto = ktpFile,
+                                    profilePhoto = profileFile,
+                                    npwpPhoto = npwpFile
+                                )
+                            )
+                        }
+                    }
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                         Text("Kirim Data", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Kirim Data", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(48.dp))
@@ -535,7 +584,7 @@ fun LoanovaTextField(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                    tint = if (error != null) MaterialTheme.colorScheme.error else ProfileSecondaryColor
                 )
             },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -543,9 +592,9 @@ fun LoanovaTextField(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = LoanovaBlue,
-                focusedLabelColor = LoanovaBlue,
-                cursorColor = LoanovaBlue,
+                focusedBorderColor = ProfileSecondaryColor,
+                focusedLabelColor = ProfilePrimaryColor,
+                cursorColor = ProfileSecondaryColor,
                 unfocusedBorderColor = Color.LightGray.copy(alpha = 0.7f),
                 errorBorderColor = MaterialTheme.colorScheme.error,
                 errorLabelColor = MaterialTheme.colorScheme.error
@@ -555,7 +604,7 @@ fun LoanovaTextField(
                 if (error != null) {
                     Text(
                         text = "# $error",
-                        color = Color(0xFFEF4444), // Red color from Login Screen
+                        color = Color(0xFFEF4444),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
@@ -570,14 +619,14 @@ fun FileUploadRow(label: String, uri: Uri?, error: String? = null, onClick: () -
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 6.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF8FAFC)),
-        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = if (error != null) Color(0xFFFEF2F2) else Color(0xFFF0F9FF)),
+        elevation = CardDefaults.cardElevation(2.dp),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp, 
-            color = if (error != null) MaterialTheme.colorScheme.error else Color.LightGray.copy(alpha = 0.5f)
+            color = if (error != null) MaterialTheme.colorScheme.error else ProfileSecondaryColor.copy(alpha = 0.3f)
         )
     ) {
         Row(
@@ -586,15 +635,18 @@ fun FileUploadRow(label: String, uri: Uri?, error: String? = null, onClick: () -
         ) {
             Box(
                  modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) else LoanovaBlue.copy(alpha = 0.1f)),
+                    .background(
+                        if (error != null) MaterialTheme.colorScheme.error.copy(alpha = 0.1f) 
+                        else ProfileSecondaryColor.copy(alpha = 0.15f)
+                    ),
                  contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.UploadFile, 
                     contentDescription = null, 
-                    tint = if (error != null) MaterialTheme.colorScheme.error else LoanovaBlue
+                    tint = if (error != null) MaterialTheme.colorScheme.error else ProfileSecondaryColor
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -603,16 +655,16 @@ fun FileUploadRow(label: String, uri: Uri?, error: String? = null, onClick: () -
                     text = label, 
                     fontWeight = FontWeight.SemiBold, 
                     fontSize = 14.sp,
-                    color = if (error != null) MaterialTheme.colorScheme.error else Color.Unspecified
+                    color = if (error != null) MaterialTheme.colorScheme.error else ProfilePrimaryColor
                 )
                 if (uri != null) {
-                    Text("File Terpilih", style = MaterialTheme.typography.bodySmall, color = LoanovaBlue, fontWeight = FontWeight.Bold)
+                    Text("File Terpilih", style = MaterialTheme.typography.bodySmall, color = ProfileSecondaryColor, fontWeight = FontWeight.Bold)
                 } else {
                     Text("Klik untuk upload foto", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
             if (uri != null) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981))
             }
         }
     }
@@ -693,21 +745,21 @@ fun ImageSourceOptionDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             modifier = Modifier.padding(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp)
+            elevation = CardDefaults.cardElevation(12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Pilih Sumber Gambar",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = LoanovaBlue
+                    color = ProfilePrimaryColor
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -720,20 +772,20 @@ fun ImageSourceOptionDialog(
                     ) {
                         Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
-                            color = LoanovaBlue.copy(alpha = 0.1f),
-                            modifier = Modifier.size(64.dp)
+                            color = ProfileSecondaryColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.CameraAlt,
                                     contentDescription = "Kamera",
-                                    tint = LoanovaBlue,
-                                    modifier = Modifier.size(32.dp)
+                                    tint = ProfileSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = ProfilePrimaryColor)
                     }
 
                     // Gallery Option
@@ -743,26 +795,26 @@ fun ImageSourceOptionDialog(
                     ) {
                          Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
-                            color = LoanovaLightBlue.copy(alpha = 0.1f),
-                            modifier = Modifier.size(64.dp)
+                            color = ProfileAccentColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.PhotoLibrary,
                                     contentDescription = "Galeri",
-                                    tint = LoanovaBlue,
-                                    modifier = Modifier.size(32.dp)
+                                    tint = ProfileSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = ProfilePrimaryColor)
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
                 TextButton(onClick = onDismiss) {
-                    Text("Batal", color = Color.Gray)
+                    Text("Batal", color = Color.Gray, fontWeight = FontWeight.Medium)
                 }
             }
         }
