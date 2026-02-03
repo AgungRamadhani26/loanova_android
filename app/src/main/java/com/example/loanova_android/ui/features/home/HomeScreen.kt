@@ -158,7 +158,11 @@ fun HomeScreen(
             2 -> Box(modifier = Modifier.padding(padding)) {
                 NotificationScreen(
                     showBackButton = false,
-                    onNavigateBack = null
+                    onNavigateBack = null,
+                    onNavigateToLoanHistory = {
+                        // Navigate to My Loans tab (index 1)
+                        selectedTab = 1
+                    }
                 )
             }
 

@@ -55,6 +55,7 @@ private val NotifBackgroundColor = Color(0xFFF0F9FF)   // Light Blue Background
 fun NotificationScreen(
     showBackButton: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
+    onNavigateToLoanHistory: (() -> Unit)? = null,
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -111,9 +112,12 @@ fun NotificationScreen(
                     NotificationList(
                         notifications = uiState.notifications,
                         onNotificationClick = { notification ->
+                            // Mark as read if unread
                             if (!notification.isRead) {
                                 viewModel.markAsRead(notification.id)
                             }
+                            // Navigate to loan history so user can see their loan progress
+                            onNavigateToLoanHistory?.invoke()
                         }
                     )
                 }
