@@ -1,5 +1,11 @@
 package com.example.loanova_android.data.repository
 
+import android.content.Context
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.local.dao.ApplicationHistoryDao
 import com.example.loanova_android.data.local.dao.LoanApplicationDao
@@ -8,7 +14,10 @@ import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
 import com.example.loanova_android.data.remote.api.LoanApplicationApi
+import com.example.loanova_android.data.worker.LoanApplicationWorker
 import com.example.loanova_android.domain.repository.ILoanApplicationRepository
+import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -19,19 +28,31 @@ import kotlinx.coroutines.flow.map
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 import javax.inject.Inject
 
 /**
  * Repository implementation untuk Loan Application operations.
- * Menggunakan strategi offline-first untuk read operations:
+ * Menggunakan strategi offline-first:
+ * 
+ * READ Operations:
  * 1. Tampilkan cache local jika ada
  * 2. Sync dengan network
  * 3. Update cache dan emit dari cache (single source of truth)
+ * 
+ * WRITE Operations (submitLoanApplication):
+ * 1. Try API call
+ * 2. Jika IOException (offline), simpan ke WorkManager queue
+ * 3. Return OFFLINE_QUEUED signal
+ * 4. Worker akan sync otomatis saat online
  */
 class LoanApplicationRepository @Inject constructor(
     private val loanApplicationApi: LoanApplicationApi,
     private val loanApplicationDao: LoanApplicationDao,
-    private val applicationHistoryDao: ApplicationHistoryDao
+    private val applicationHistoryDao: ApplicationHistoryDao,
+    private val workManager: WorkManager,
+    private val gson: Gson,
+    @ApplicationContext private val context: Context
 ) : ILoanApplicationRepository {
     
     override suspend fun submitLoanApplication(
@@ -89,10 +110,70 @@ class LoanApplicationRepository @Inject constructor(
                 }
                 emit(Resource.Error(errorMessage))
             }
+        } catch (e: java.io.IOException) {
+            // Offline Case: Enqueue to WorkManager for later sync
+            enqueueOfflineSubmit(request)
+            emit(Resource.Error("OFFLINE_QUEUED"))
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
         }
     }.flowOn(Dispatchers.IO)
+    
+    /**
+     * Enqueue loan application for offline submission.
+     * Files are copied to persistent storage and WorkManager handles the retry.
+     */
+    private fun enqueueOfflineSubmit(request: LoanApplicationRequest) {
+        // Copy files to persistent storage
+        val savingBookPath = copyToPersistent(request.savingBookCover)
+        val payslipPath = copyToPersistent(request.payslipPhoto)
+        
+        // Create a modified request without File objects for JSON serialization
+        // (File paths are passed separately)
+        val requestForJson = request.copy(
+            savingBookCover = File("placeholder"), // Will be rebuilt from path
+            payslipPhoto = File("placeholder")
+        )
+
+        // Create Data for WorkManager
+        val inputData = Data.Builder()
+            .putString("request_json", gson.toJson(requestForJson))
+            .putString("saving_book_path", savingBookPath)
+            .putString("payslip_path", payslipPath)
+            .build()
+            
+        // Set constraints - only run when network is available
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+            
+        // Create and enqueue work request
+        val workRequest = OneTimeWorkRequest.Builder(LoanApplicationWorker::class.java)
+            .setConstraints(constraints)
+            .setInputData(inputData)
+            .addTag("LOAN_APPLICATION_SYNC_WORK")
+            .build()
+            
+        workManager.enqueue(workRequest)
+    }
+    
+    /**
+     * Copy file to persistent storage for offline sync.
+     * Returns the absolute path of the copied file.
+     */
+    private fun copyToPersistent(file: File?): String? {
+        if (file == null || !file.exists()) return null
+        return try {
+            val destDir = File(context.filesDir, "pending_loan_uploads")
+            if (!destDir.exists()) destDir.mkdirs()
+            val destFile = File(destDir, "offline_${System.currentTimeMillis()}_${file.name}")
+            file.copyTo(destFile, overwrite = true)
+            destFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
     
     /**
      * Get My Applications - OFFLINE-FIRST

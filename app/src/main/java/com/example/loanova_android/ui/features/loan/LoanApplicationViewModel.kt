@@ -3,6 +3,8 @@ package com.example.loanova_android.ui.features.loan
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.model.dto.BranchResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
@@ -65,11 +67,15 @@ data class LoanApplicationUiState(
     val successMessage: String? = null,
     val errorMessage: String? = null,
     val fieldErrors: Map<String, String>? = null,
-    val submitResult: LoanApplicationResponse? = null
+    val submitResult: LoanApplicationResponse? = null,
+    
+    // Offline status
+    val isOfflineQueued: Boolean = false
 )
 
 /**
  * ViewModel untuk Loan Application Screen.
+ * Mendukung offline-first submission dengan WorkManager.
  */
 @HiltViewModel
 class LoanApplicationViewModel @Inject constructor(
@@ -77,7 +83,8 @@ class LoanApplicationViewModel @Inject constructor(
     private val getPublicPlafondsUseCase: GetPublicPlafondsUseCase,
     private val getActivePlafondUseCase: GetActivePlafondUseCase,
     private val submitLoanUseCase: SubmitLoanUseCase,
-    private val gson: com.google.gson.Gson
+    private val gson: com.google.gson.Gson,
+    private val workManager: WorkManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(LoanApplicationUiState())
@@ -89,6 +96,37 @@ class LoanApplicationViewModel @Inject constructor(
     init {
         loadBranches()
         loadInitialData()
+        observeLoanSyncWorker()
+    }
+    
+    /**
+     * Observe WorkManager untuk mendeteksi ketika offline submission berhasil di-sync.
+     */
+    private fun observeLoanSyncWorker() {
+        viewModelScope.launch {
+            workManager.getWorkInfosByTagFlow("LOAN_APPLICATION_SYNC_WORK")
+                .collect { workInfos ->
+                    val successWork = workInfos.find { it.state == WorkInfo.State.SUCCEEDED }
+                    if (successWork != null) {
+                        // Worker finished successfully - update UI
+                        if (_uiState.value.isOfflineQueued) {
+                            _uiState.value = _uiState.value.copy(
+                                isOfflineQueued = false,
+                                successMessage = "Pengajuan pinjaman berhasil dikirim!",
+                                errorMessage = null
+                            )
+                        }
+                    }
+                    
+                    val failedWork = workInfos.find { it.state == WorkInfo.State.FAILED }
+                    if (failedWork != null && _uiState.value.isOfflineQueued) {
+                        _uiState.value = _uiState.value.copy(
+                            isOfflineQueued = false,
+                            errorMessage = "Gagal mengirim pengajuan. Silakan coba lagi."
+                        )
+                    }
+                }
+        }
     }
     
     fun loadInitialData() {
@@ -343,11 +381,24 @@ class LoanApplicationViewModel @Inject constructor(
                             isSubmitting = false,
                             successMessage = result.message ?: "Pengajuan berhasil disubmit!",
                             submitResult = result.data,
-                            fieldErrors = null
+                            fieldErrors = null,
+                            isOfflineQueued = false
                         )
                     }
                     is Resource.Error -> {
                         val rawMsg = result.message ?: "Submit gagal"
+                        
+                        // Handle Offline Queued Case
+                        if (rawMsg == "OFFLINE_QUEUED") {
+                            _uiState.value = _uiState.value.copy(
+                                isSubmitting = false,
+                                isOfflineQueued = true,
+                                errorMessage = "Koneksi terputus. Pengajuan disimpan dan akan dikirim otomatis saat online.",
+                                fieldErrors = null
+                            )
+                            return@collect
+                        }
+                        
                         if (rawMsg.startsWith("VALIDATION_ERROR||")) {
                             try {
                                 val parts = rawMsg.split("||")

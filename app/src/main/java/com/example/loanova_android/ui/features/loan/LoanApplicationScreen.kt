@@ -26,10 +26,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudQueue
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.AccountBalance
@@ -51,9 +55,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.loanova_android.core.common.ImageUtils
 import com.example.loanova_android.ui.theme.*
 import com.example.loanova_android.data.model.dto.UserPlafondResponse
 import com.google.android.gms.location.LocationServices
@@ -61,6 +67,7 @@ import com.google.android.gms.location.Priority
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.Objects
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -104,9 +111,16 @@ fun LoanApplicationScreen(
         val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         
         if (fineGranted || coarseGranted) {
-            getLocation(context, fusedLocationClient) { lat, lng ->
-                viewModel.updateLocation(lat, lng)
-            }
+            getLocation(
+                context, 
+                fusedLocationClient,
+                onLocationReceived = { lat, lng ->
+                    viewModel.updateLocation(lat, lng)
+                },
+                onFailure = { error ->
+                    viewModel.setLocationError(error)
+                }
+            )
         } else {
             viewModel.setLocationError("Izin lokasi diperlukan untuk mengajukan pinjaman")
         }
@@ -116,22 +130,103 @@ fun LoanApplicationScreen(
     var savingBookCoverFile by remember { mutableStateOf<File?>(null) }
     var payslipPhotoFile by remember { mutableStateOf<File?>(null) }
     
-    val savingBookLauncher = rememberLauncherForActivityResult(
+    // --- CAMERA & GALLERY LOGIC ---
+    // Dialog state: Apakah popup "Pilih Kamera/Galeri" sedang muncul?
+    var showImageSourceDialog by remember { mutableStateOf(false) }
+    
+    // Target state: Foto mana yang sedang diedit? ("savingBook" atau "payslip")
+    var currentImageTarget by remember { mutableStateOf<String?>(null) }
+    
+    // Temp URI: Menyimpan lokasi sementara foto hasil jepretan kamera sebelum diproses
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraPath by remember { mutableStateOf<String?>(null) }
+    
+    /**
+     * Membuat URI sementara untuk menyimpan hasil foto kamera.
+     * Menggunakan FileProvider agar aplikasi Kamera eksternal (bawaan HP)
+     * bisa mengakses file di folder cache aplikasi kita secara aman.
+     */
+    fun createTempPictureUri(): Uri {
+        val tempFile = File.createTempFile("camera_loan_", ".jpg", context.cacheDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+        tempCameraPath = tempFile.absolutePath
+        return FileProvider.getUriForFile(
+            Objects.requireNonNull(context),
+            "com.example.loanova_android.provider",
+            tempFile
+        )
+    }
+    
+    // Gallery Launcher (dipindahkan ke sini untuk mendukung keduanya)
+    val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { 
-            viewModel.updateSavingBookCover(it)
-            savingBookCoverFile = uriToFile(context, it)
+        uri?.let {
+            when(currentImageTarget) {
+                "savingBook" -> {
+                    viewModel.updateSavingBookCover(it)
+                    savingBookCoverFile = uriToFile(context, it)
+                }
+                "payslip" -> {
+                    viewModel.updatePayslipPhoto(it)
+                    payslipPhotoFile = uriToFile(context, it)
+                }
+            }
         }
     }
     
-    val payslipLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { 
-            viewModel.updatePayslipPhoto(it)
-            payslipPhotoFile = uriToFile(context, it)
+    // Camera Launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempCameraPath != null) {
+            val rawFile = File(tempCameraPath!!)
+            
+            // Process (Rotate & Compress) Immediately using ImageUtils
+            val processedFile = ImageUtils.processFile(rawFile)
+            
+            if (processedFile != null) {
+                val newUri = Uri.fromFile(processedFile)
+                when(currentImageTarget) {
+                    "savingBook" -> {
+                        viewModel.updateSavingBookCover(newUri)
+                        savingBookCoverFile = processedFile
+                    }
+                    "payslip" -> {
+                        viewModel.updatePayslipPhoto(newUri)
+                        payslipPhotoFile = processedFile
+                    }
+                }
+            } else {
+                Toast.makeText(context, "Gagal memproses gambar", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+    
+    // Camera Permission Launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                val uri = createTempPictureUri()
+                tempCameraUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Function to open image source dialog
+    fun openImageSelection(target: String) {
+        currentImageTarget = target
+        showImageSourceDialog = true
     }
     
     // Request location on first load
@@ -145,9 +240,16 @@ fun LoanApplicationScreen(
         
         if (fineLocation == PackageManager.PERMISSION_GRANTED || 
             coarseLocation == PackageManager.PERMISSION_GRANTED) {
-            getLocation(context, fusedLocationClient) { lat, lng ->
-                viewModel.updateLocation(lat, lng)
-            }
+            getLocation(
+                context, 
+                fusedLocationClient,
+                onLocationReceived = { lat, lng ->
+                    viewModel.updateLocation(lat, lng)
+                },
+                onFailure = { error ->
+                    viewModel.setLocationError(error)
+                }
+            )
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -173,6 +275,38 @@ fun LoanApplicationScreen(
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearMessages()
         }
+    }
+    
+    // Image Source Dialog (Camera/Gallery Picker)
+    if (showImageSourceDialog) {
+        ImageSourceOptionDialog(
+            onDismiss = { showImageSourceDialog = false },
+            onCameraClick = {
+                showImageSourceDialog = false
+                val permissionToCheck = Manifest.permission.CAMERA
+                val isGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    permissionToCheck
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (isGranted) {
+                    try {
+                        val uri = createTempPictureUri()
+                        tempCameraUri = uri
+                        cameraLauncher.launch(uri)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal membuka kamera: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    cameraPermissionLauncher.launch(permissionToCheck)
+                }
+            },
+            onGalleryClick = {
+                showImageSourceDialog = false
+                galleryLauncher.launch("image/*")
+            }
+        )
     }
     
     Scaffold(
@@ -205,6 +339,15 @@ fun LoanApplicationScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Offline Queued Banner
+                AnimatedVisibility(
+                    visible = uiState.isOfflineQueued,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    OfflineQueuedBanner()
+                }
+                
                 // Error Banner
                 AnimatedVisibility(
                     visible = uiState.errorMessage != null,
@@ -249,9 +392,16 @@ fun LoanApplicationScreen(
                         longitude = uiState.longitude,
                         error = uiState.fieldErrors?.get("latitude") ?: uiState.fieldErrors?.get("longitude") ?: uiState.locationError,
                         onRefresh = {
-                            getLocation(context, fusedLocationClient) { lat, lng ->
-                                viewModel.updateLocation(lat, lng)
-                            }
+                            getLocation(
+                                context, 
+                                fusedLocationClient,
+                                onLocationReceived = { lat, lng ->
+                                    viewModel.updateLocation(lat, lng)
+                                },
+                                onFailure = { error ->
+                                    viewModel.setLocationError(error)
+                                }
+                            )
                         }
                     )
                     
@@ -344,14 +494,14 @@ fun LoanApplicationScreen(
                         label = "Cover Buku Tabungan *",
                         uri = uiState.savingBookCoverUri,
                         error = uiState.fieldErrors?.get("savingBookCover"),
-                        onClick = { savingBookLauncher.launch("image/*") }
+                        onClick = { openImageSelection("savingBook") }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     FileUploadRow(
                         label = "Slip Gaji *",
                         uri = uiState.payslipPhotoUri,
                         error = uiState.fieldErrors?.get("payslipPhoto"),
-                        onClick = { payslipLauncher.launch("image/*") }
+                        onClick = { openImageSelection("payslip") }
                     )
                 }
                 
@@ -411,6 +561,59 @@ fun LoanApplicationScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Banner untuk menampilkan status offline queued.
+ * Ditampilkan ketika pengajuan disimpan secara offline dan menunggu sinkronisasi.
+ */
+@Composable
+private fun OfflineQueuedBanner() {
+    Surface(
+        color = Color(0xFFFFF3E0), // Orange background
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.3f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon with animation effect
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF9800).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CloudQueue,
+                    contentDescription = null,
+                    tint = Color(0xFFFF9800),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Pengajuan Tersimpan Offline",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Color(0xFFE65100)
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Data pengajuan akan dikirim otomatis saat koneksi tersedia.",
+                    fontSize = 12.sp,
+                    color = Color(0xFF6D4C41),
+                    lineHeight = 16.sp
+                )
             }
         }
     }
@@ -838,10 +1041,17 @@ private fun FileUploadRow(
 }
 
 // Helper functions
+/**
+ * Get location dengan fallback strategy untuk mendukung offline mode:
+ * 1. Coba getCurrentLocation (GPS fresh) - butuh waktu tapi akurat
+ * 2. Jika gagal/null, fallback ke lastLocation (cached) - instant tapi mungkin stale
+ * 3. Jika keduanya gagal, panggil onFailure callback
+ */
 private fun getLocation(
     context: Context,
     fusedLocationClient: com.google.android.gms.location.FusedLocationProviderClient,
-    onLocationReceived: (Double, Double) -> Unit
+    onLocationReceived: (Double, Double) -> Unit,
+    onFailure: ((String) -> Unit)? = null
 ) {
     try {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
@@ -849,15 +1059,60 @@ private fun getLocation(
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) 
             == PackageManager.PERMISSION_GRANTED
         ) {
+            // Strategy 1: Try to get fresh GPS location
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { location ->
-                    location?.let {
-                        onLocationReceived(it.latitude, it.longitude)
+                    if (location != null) {
+                        onLocationReceived(location.latitude, location.longitude)
+                    } else {
+                        // Strategy 2: Fallback to last known location (works offline!)
+                        getLastKnownLocation(context, fusedLocationClient, onLocationReceived, onFailure)
                     }
+                }
+                .addOnFailureListener { e ->
+                    // GPS failed, try last known location
+                    getLastKnownLocation(context, fusedLocationClient, onLocationReceived, onFailure)
+                }
+        } else {
+            onFailure?.invoke("Izin lokasi belum diberikan")
+        }
+    } catch (e: SecurityException) {
+        e.printStackTrace()
+        onFailure?.invoke("Error keamanan: ${e.message}")
+    }
+}
+
+/**
+ * Get last known location dari cache sistem.
+ * Ini bekerja OFFLINE karena menggunakan data yang sudah tersimpan di device.
+ */
+private fun getLastKnownLocation(
+    context: Context,
+    fusedLocationClient: com.google.android.gms.location.FusedLocationProviderClient,
+    onLocationReceived: (Double, Double) -> Unit,
+    onFailure: ((String) -> Unit)? = null
+) {
+    try {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
+            == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) 
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        onLocationReceived(location.latitude, location.longitude)
+                    } else {
+                        onFailure?.invoke("Lokasi tidak tersedia. Pastikan GPS aktif dan coba di area terbuka.")
+                    }
+                }
+                .addOnFailureListener { e ->
+                    onFailure?.invoke("Gagal mendapatkan lokasi: ${e.message}")
                 }
         }
     } catch (e: SecurityException) {
         e.printStackTrace()
+        onFailure?.invoke("Error keamanan: ${e.message}")
     }
 }
 
@@ -1353,6 +1608,96 @@ private fun ModernInfoBox(
                 fontWeight = FontWeight.Bold,
                 color = accentColor
             )
+        }
+    }
+}
+/**
+ * Dialog untuk memilih sumber gambar (Kamera atau Galeri).
+ * 
+ * Menampilkan popup dengan 2 pilihan:
+ * - Kamera: Membuka aplikasi kamera bawaan HP untuk mengambil foto langsung.
+ * - Galeri: Membuka galeri foto untuk memilih gambar yang sudah ada.
+ */
+@Composable
+private fun ImageSourceOptionDialog(
+    onDismiss: () -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.padding(16.dp),
+            elevation = CardDefaults.cardElevation(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Pilih Sumber Gambar",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = LoanPrimaryColor
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    // Camera Option
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onCameraClick() }
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = LoanSecondaryColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Kamera",
+                                    tint = LoanSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Kamera", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LoanPrimaryColor)
+                    }
+
+                    // Gallery Option
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onGalleryClick() }
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = LoanAccentColor.copy(alpha = 0.15f),
+                            modifier = Modifier.size(72.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.PhotoLibrary,
+                                    contentDescription = "Galeri",
+                                    tint = LoanSecondaryColor,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Galeri", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = LoanPrimaryColor)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(28.dp))
+                TextButton(onClick = onDismiss) {
+                    Text("Batal", color = Color.Gray, fontWeight = FontWeight.Medium)
+                }
+            }
         }
     }
 }
