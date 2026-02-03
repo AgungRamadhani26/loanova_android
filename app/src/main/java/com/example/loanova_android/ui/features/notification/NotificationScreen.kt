@@ -46,9 +46,11 @@ private val NotifSuccessColor = Color(0xFF10B981)      // Green for success
 private val NotifWarningColor = Color(0xFFF59E0B)      // Amber for warning/pending
 private val NotifErrorColor = Color(0xFFEF4444)        // Red for rejected
 private val NotifBackgroundColor = Color(0xFFF0F9FF)   // Light Blue Background
+private val NotifOfflineColor = Color(0xFF6B7280)      // Gray for offline indicator
 
 /**
  * Notification Screen - Menampilkan daftar notifikasi perkembangan pinjaman.
+ * Menggunakan offline-first architecture.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,8 +64,8 @@ fun NotificationScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     
     // Handle refresh
-    LaunchedEffect(uiState.isLoading) {
-        if (!uiState.isLoading) {
+    LaunchedEffect(uiState.isLoading, uiState.isSyncing) {
+        if (!uiState.isLoading && !uiState.isSyncing) {
             isRefreshing = false
         }
     }
@@ -76,51 +78,126 @@ fun NotificationScreen(
                 onNavigateBack = onNavigateBack,
                 onMarkAllRead = { viewModel.markAllAsRead() },
                 onRefresh = { viewModel.loadNotifications() },
-                isMarkingRead = uiState.isMarkingRead
+                isMarkingRead = uiState.isMarkingRead,
+                isSyncing = uiState.isSyncing
             )
         },
         containerColor = NotifBackgroundColor
     ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                isRefreshing = true
-                viewModel.loadNotifications()
-            },
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            when {
-                uiState.isLoading && uiState.notifications.isEmpty() -> {
-                    // Initial loading state
-                    LoadingContent()
-                }
-                uiState.error != null && uiState.notifications.isEmpty() -> {
-                    // Error state
-                    ErrorContent(
-                        error = uiState.error!!,
-                        onRetry = { viewModel.loadNotifications() }
-                    )
-                }
-                uiState.notifications.isEmpty() -> {
-                    // Empty state
-                    EmptyNotificationContent()
-                }
-                else -> {
-                    // Notification list
-                    NotificationList(
-                        notifications = uiState.notifications,
-                        onNotificationClick = { notification ->
-                            // Mark as read if unread
-                            if (!notification.isRead) {
-                                viewModel.markAsRead(notification.id)
+            // Offline/Cache indicator banner
+            AnimatedVisibility(
+                visible = uiState.isFromCache && uiState.notifications.isNotEmpty(),
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
+            ) {
+                OfflineBanner(
+                    isSyncing = uiState.isSyncing,
+                    onRefresh = { viewModel.loadNotifications() }
+                )
+            }
+            
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    viewModel.loadNotifications()
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    uiState.isLoading && uiState.notifications.isEmpty() -> {
+                        // Initial loading state
+                        LoadingContent()
+                    }
+                    uiState.error != null && uiState.notifications.isEmpty() -> {
+                        // Error state
+                        ErrorContent(
+                            error = uiState.error!!,
+                            onRetry = { viewModel.loadNotifications() }
+                        )
+                    }
+                    uiState.notifications.isEmpty() -> {
+                        // Empty state
+                        EmptyNotificationContent()
+                    }
+                    else -> {
+                        // Notification list
+                        NotificationList(
+                            notifications = uiState.notifications,
+                            onNotificationClick = { notification ->
+                                // Mark as read if unread
+                                if (!notification.isRead) {
+                                    viewModel.markAsRead(notification.id)
+                                }
+                                // Navigate to loan history with the specific loan application ID
+                                onNavigateToLoanHistory?.invoke(notification.loanApplicationId)
                             }
-                            // Navigate to loan history with the specific loan application ID
-                            onNavigateToLoanHistory?.invoke(notification.loanApplicationId)
-                        }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Banner yang menunjukkan data berasal dari cache (offline mode)
+ */
+@Composable
+private fun OfflineBanner(
+    isSyncing: Boolean,
+    onRefresh: () -> Unit
+) {
+    Surface(
+        color = NotifOfflineColor.copy(alpha = 0.1f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isSyncing) Icons.Default.Sync else Icons.Default.CloudOff,
+                    contentDescription = null,
+                    tint = NotifOfflineColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isSyncing) "Menyinkronkan..." else "Data dari cache",
+                    fontSize = 12.sp,
+                    color = NotifOfflineColor
+                )
+            }
+            
+            if (!isSyncing) {
+                TextButton(
+                    onClick = onRefresh,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Refresh",
+                        fontSize = 12.sp,
+                        color = NotifSecondaryColor
                     )
                 }
+            } else {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = NotifSecondaryColor,
+                    strokeWidth = 2.dp
+                )
             }
         }
     }
@@ -134,7 +211,8 @@ private fun NotificationTopBar(
     onNavigateBack: (() -> Unit)?,
     onMarkAllRead: () -> Unit,
     onRefresh: () -> Unit,
-    isMarkingRead: Boolean
+    isMarkingRead: Boolean,
+    isSyncing: Boolean = false
 ) {
     TopAppBar(
         title = {
@@ -168,13 +246,24 @@ private fun NotificationTopBar(
             }
         },
         actions = {
-            // Refresh button
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    tint = Color.White
-                )
+            // Sync/Refresh button
+            IconButton(
+                onClick = onRefresh,
+                enabled = !isSyncing
+            ) {
+                if (isSyncing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Color.White
+                    )
+                }
             }
             
             // Mark all as read button

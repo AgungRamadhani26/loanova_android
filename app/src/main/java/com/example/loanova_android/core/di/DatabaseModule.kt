@@ -6,6 +6,7 @@ import com.example.loanova_android.core.database.AppDatabase
 import com.example.loanova_android.data.local.dao.ApplicationHistoryDao
 import com.example.loanova_android.data.local.dao.BranchDao
 import com.example.loanova_android.data.local.dao.LoanApplicationDao
+import com.example.loanova_android.data.local.dao.NotificationDao
 import com.example.loanova_android.data.local.dao.PlafondDao
 import com.example.loanova_android.data.local.dao.UserDao
 import com.example.loanova_android.data.local.dao.UserPlafondDao
@@ -49,4 +50,7 @@ object DatabaseModule {
     
     @Provides
     fun provideUserPlafondDao(database: AppDatabase): UserPlafondDao = database.userPlafondDao()
+    
+    @Provides
+    fun provideNotificationDao(database: AppDatabase): NotificationDao = database.notificationDao()
 }

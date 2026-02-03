@@ -21,12 +21,19 @@ data class NotificationUiState(
     val error: String? = null,
     val isMarkingRead: Boolean = false,
     val markReadSuccess: Boolean = false,
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val isFromCache: Boolean = false, // Menandakan data berasal dari cache
+    val isSyncing: Boolean = false    // Menandakan sedang sync dengan server
 )
 
 /**
  * ViewModel untuk NotificationScreen.
- * Menghandle fetching notifikasi dan marking as read.
+ * Menghandle fetching notifikasi dengan offline-first architecture.
+ * 
+ * Flow:
+ * 1. Load data dari cache lokal terlebih dahulu (instant display)
+ * 2. Sync dengan server di background
+ * 3. Update UI dengan data terbaru
  */
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
@@ -41,7 +48,11 @@ class NotificationViewModel @Inject constructor(
     }
     
     /**
-     * Load daftar notifikasi dari server
+     * Load daftar notifikasi (offline-first)
+     * 
+     * 1. Tampilkan data dari cache dulu (isFromCache = true)
+     * 2. Fetch dari server
+     * 3. Update dengan data fresh (isFromCache = false)
      */
     fun loadNotifications() {
         viewModelScope.launch {
@@ -49,7 +60,8 @@ class NotificationViewModel @Inject constructor(
                 when (result) {
                     is Resource.Loading -> {
                         _uiState.value = _uiState.value.copy(
-                            isLoading = true,
+                            isLoading = _uiState.value.notifications.isEmpty(), // Only show loading if no cached data
+                            isSyncing = true,
                             error = null
                         )
                     }
@@ -58,16 +70,27 @@ class NotificationViewModel @Inject constructor(
                         val unreadCount = notifications.count { !it.isRead }
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
+                            isSyncing = false,
                             notifications = notifications,
                             error = null,
-                            unreadCount = unreadCount
+                            unreadCount = unreadCount,
+                            isFromCache = result.isFromCache
                         )
                     }
                     is Resource.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = result.message
-                        )
+                        // Only show error if no cached data available
+                        if (_uiState.value.notifications.isEmpty()) {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isSyncing = false,
+                                error = result.message
+                            )
+                        } else {
+                            // We have cached data, just stop syncing indicator
+                            _uiState.value = _uiState.value.copy(
+                                isSyncing = false
+                            )
+                        }
                     }
                 }
             }
@@ -75,9 +98,23 @@ class NotificationViewModel @Inject constructor(
     }
     
     /**
-     * Tandai notifikasi sebagai sudah dibaca
+     * Tandai notifikasi sebagai sudah dibaca (optimistic update)
+     * 
+     * 1. Update local database immediately
+     * 2. Sync dengan server di background
      */
     fun markAsRead(notificationId: Long) {
+        // Optimistic update - update UI immediately
+        val updatedNotifications = _uiState.value.notifications.map { notif ->
+            if (notif.id == notificationId) notif.copy(isRead = true) else notif
+        }
+        val unreadCount = updatedNotifications.count { !it.isRead }
+        _uiState.value = _uiState.value.copy(
+            notifications = updatedNotifications,
+            unreadCount = unreadCount
+        )
+        
+        // Sync with server
         viewModelScope.launch {
             notificationRepository.markAsRead(notificationId).collect { result ->
                 when (result) {
@@ -85,22 +122,16 @@ class NotificationViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(isMarkingRead = true)
                     }
                     is Resource.Success -> {
-                        // Update local state
-                        val updatedNotifications = _uiState.value.notifications.map { notif ->
-                            if (notif.id == notificationId) notif.copy(isRead = true) else notif
-                        }
-                        val unreadCount = updatedNotifications.count { !it.isRead }
                         _uiState.value = _uiState.value.copy(
                             isMarkingRead = false,
-                            notifications = updatedNotifications,
-                            unreadCount = unreadCount,
                             markReadSuccess = true
                         )
                     }
                     is Resource.Error -> {
+                        // Even if server fails, we keep the optimistic update
+                        // Will sync on next fetch
                         _uiState.value = _uiState.value.copy(
-                            isMarkingRead = false,
-                            error = result.message
+                            isMarkingRead = false
                         )
                     }
                 }
@@ -109,9 +140,19 @@ class NotificationViewModel @Inject constructor(
     }
     
     /**
-     * Tandai semua notifikasi sebagai sudah dibaca
+     * Tandai semua notifikasi sebagai sudah dibaca (optimistic update)
      */
     fun markAllAsRead() {
+        // Optimistic update - update UI immediately
+        val updatedNotifications = _uiState.value.notifications.map { notif ->
+            notif.copy(isRead = true)
+        }
+        _uiState.value = _uiState.value.copy(
+            notifications = updatedNotifications,
+            unreadCount = 0
+        )
+        
+        // Sync with server
         viewModelScope.launch {
             notificationRepository.markAllAsRead().collect { result ->
                 when (result) {
@@ -119,21 +160,14 @@ class NotificationViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(isMarkingRead = true)
                     }
                     is Resource.Success -> {
-                        // Update local state - mark all as read
-                        val updatedNotifications = _uiState.value.notifications.map { notif ->
-                            notif.copy(isRead = true)
-                        }
                         _uiState.value = _uiState.value.copy(
                             isMarkingRead = false,
-                            notifications = updatedNotifications,
-                            unreadCount = 0,
                             markReadSuccess = true
                         )
                     }
                     is Resource.Error -> {
                         _uiState.value = _uiState.value.copy(
-                            isMarkingRead = false,
-                            error = result.message
+                            isMarkingRead = false
                         )
                     }
                 }

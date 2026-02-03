@@ -5,12 +5,14 @@ import androidx.room.RoomDatabase
 import com.example.loanova_android.data.local.dao.ApplicationHistoryDao
 import com.example.loanova_android.data.local.dao.BranchDao
 import com.example.loanova_android.data.local.dao.LoanApplicationDao
+import com.example.loanova_android.data.local.dao.NotificationDao
 import com.example.loanova_android.data.local.dao.PlafondDao
 import com.example.loanova_android.data.local.dao.UserDao
 import com.example.loanova_android.data.local.dao.UserPlafondDao
 import com.example.loanova_android.data.local.entity.ApplicationHistoryEntity
 import com.example.loanova_android.data.local.entity.BranchEntity
 import com.example.loanova_android.data.local.entity.LoanApplicationEntity
+import com.example.loanova_android.data.local.entity.NotificationEntity
 import com.example.loanova_android.data.local.entity.PlafondEntity
 import com.example.loanova_android.data.local.entity.UserPlafondEntity
 import com.example.loanova_android.data.local.entity.UserProfileEntity
@@ -24,9 +26,10 @@ import com.example.loanova_android.data.model.entity.UserEntity
         LoanApplicationEntity::class,
         ApplicationHistoryEntity::class,
         BranchEntity::class,
-        UserPlafondEntity::class
+        UserPlafondEntity::class,
+        NotificationEntity::class
     ], 
-    version = 4, // Increment version for offline-first active plafond
+    version = 5, // Increment version for notification offline-first
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,4 +39,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun applicationHistoryDao(): ApplicationHistoryDao
     abstract fun branchDao(): BranchDao
     abstract fun userPlafondDao(): UserPlafondDao
+    abstract fun notificationDao(): NotificationDao
 }
