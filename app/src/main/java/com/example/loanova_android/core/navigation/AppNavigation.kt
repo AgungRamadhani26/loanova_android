@@ -180,13 +180,24 @@ fun AppNavigation(navController: NavHostController) {
 
         // ====================================================================
         // LOAN HISTORY SCREEN
-        // Route: "loan_history"
+        // Route: "loan_history" or "loan_history?loanApplicationId={id}"
         // ====================================================================
-        composable(Screen.LoanHistory.route) {
+        composable(
+            route = "${Screen.LoanHistory.route}?loanApplicationId={loanApplicationId}",
+            arguments = listOf(
+                navArgument("loanApplicationId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val loanApplicationId = backStackEntry.arguments?.getString("loanApplicationId")?.toLongOrNull()
             com.example.loanova_android.ui.features.loan.history.LoanHistoryScreen(
                 onNavigateBack = {
                     navController.popBackStack()
-                }
+                },
+                highlightLoanId = loanApplicationId
             )
         }
     }

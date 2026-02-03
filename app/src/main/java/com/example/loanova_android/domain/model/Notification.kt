@@ -10,6 +10,7 @@ data class Notification(
     val id: Long,
     val title: String,
     val message: String,
+    val loanApplicationId: Long? = null,
     val isRead: Boolean,
     val createdAt: LocalDateTime
 ) {

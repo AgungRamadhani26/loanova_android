@@ -37,15 +37,27 @@ private val HistoryBackgroundColor = Color(0xFFF0F9FF)
 
 /**
  * Loan History Screen - Menampilkan riwayat proses pengajuan pinjaman.
+ * @param highlightLoanId Optional loan application ID to highlight (from notification deep link)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoanHistoryScreen(
     onNavigateBack: (() -> Unit)? = null,
     showBackButton: Boolean = true,
+    highlightLoanId: Long? = null,
     viewModel: LoanHistoryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Auto-select the highlighted loan when data is loaded
+    LaunchedEffect(highlightLoanId, uiState.loans) {
+        if (highlightLoanId != null && uiState.loans.isNotEmpty()) {
+            val targetLoan = uiState.loans.find { it.id == highlightLoanId }
+            if (targetLoan != null) {
+                viewModel.selectLoan(targetLoan)
+            }
+        }
+    }
     
     Scaffold(
         topBar = {

@@ -24,6 +24,7 @@ object NotificationMapper {
             id = response.id,
             title = response.title,
             message = response.message,
+            loanApplicationId = response.loanApplicationId,
             isRead = response.isRead,
             createdAt = parseDateTime(response.createdAt)
         )

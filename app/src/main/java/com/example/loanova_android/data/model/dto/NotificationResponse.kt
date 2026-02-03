@@ -16,6 +16,9 @@ data class NotificationResponse(
     @SerializedName("message")
     val message: String,
     
+    @SerializedName("loanApplicationId")
+    val loanApplicationId: Long? = null,
+    
     @SerializedName("isRead")
     val isRead: Boolean,
     

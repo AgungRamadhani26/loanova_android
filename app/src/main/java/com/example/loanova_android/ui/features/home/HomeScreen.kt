@@ -1,5 +1,6 @@
 package com.example.loanova_android.ui.features.home
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -55,11 +57,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.loanova_android.MainActivity
 import com.example.loanova_android.domain.model.Plafond
 import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.ui.theme.*
 import com.example.loanova_android.ui.features.profile.ProfileScreen
 import com.example.loanova_android.ui.features.loan.myloans.MyLoansScreen
+import com.example.loanova_android.ui.features.loan.history.LoanHistoryScreen
 import com.example.loanova_android.ui.features.notification.NotificationScreen
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -79,6 +83,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     
     // Check login status on resume/composition
     LaunchedEffect(Unit) {
@@ -87,11 +92,36 @@ fun HomeScreen(
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) } // 0: Home
     var showProfileRequiredDialog by remember { mutableStateOf(false) }
+    var showLoanHistoryScreen by remember { mutableStateOf(false) }
+    var highlightLoanApplicationId by remember { mutableStateOf<Long?>(null) }
+    
+    // Track if deep link has been handled
+    var deepLinkHandled by remember { mutableStateOf(false) }
 
     // Reset tab to Home when logged out
     LaunchedEffect(uiState.isLoggedIn) {
         if (!uiState.isLoggedIn && selectedTab != 0) {
             selectedTab = 0
+        }
+    }
+    
+    // Handle pending deep link when user is logged in and has profile
+    LaunchedEffect(uiState.isLoggedIn, uiState.hasProfile, deepLinkHandled) {
+        if (uiState.isLoggedIn && uiState.hasProfile && !deepLinkHandled) {
+            val (navigateTo, loanAppId) = MainActivity.getPendingDeepLink(context)
+            
+            if (navigateTo == "loan_history") {
+                Log.d("HomeScreen", "Handling deep link: navigateTo=$navigateTo, loanAppId=$loanAppId")
+                
+                // Navigate to notification tab and show loan history
+                selectedTab = 2 // Notification tab
+                highlightLoanApplicationId = loanAppId?.toLongOrNull()
+                showLoanHistoryScreen = true
+                
+                // Clear the pending deep link
+                MainActivity.clearPendingDeepLink(context)
+                deepLinkHandled = true
+            }
         }
     }
 
@@ -156,14 +186,25 @@ fun HomeScreen(
             }
 
             2 -> Box(modifier = Modifier.padding(padding)) {
-                NotificationScreen(
-                    showBackButton = false,
-                    onNavigateBack = null,
-                    onNavigateToLoanHistory = {
-                        // Navigate to My Loans tab (index 1)
-                        selectedTab = 1
-                    }
-                )
+                if (showLoanHistoryScreen) {
+                    LoanHistoryScreen(
+                        onNavigateBack = { 
+                            showLoanHistoryScreen = false
+                            highlightLoanApplicationId = null
+                        },
+                        showBackButton = true,
+                        highlightLoanId = highlightLoanApplicationId
+                    )
+                } else {
+                    NotificationScreen(
+                        showBackButton = false,
+                        onNavigateBack = null,
+                        onNavigateToLoanHistory = { loanAppId ->
+                            highlightLoanApplicationId = loanAppId
+                            showLoanHistoryScreen = true
+                        }
+                    )
+                }
             }
 
             3 -> ProfileScreen(
