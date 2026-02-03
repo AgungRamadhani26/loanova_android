@@ -3,11 +3,13 @@ package com.example.loanova_android.core.di
 import com.example.loanova_android.data.repository.AuthRepositoryImpl
 import com.example.loanova_android.data.repository.BranchRepository
 import com.example.loanova_android.data.repository.LoanApplicationRepository
+import com.example.loanova_android.data.repository.NotificationRepositoryImpl
 import com.example.loanova_android.data.repository.PlafondRepositoryImpl
 import com.example.loanova_android.domain.repository.IAuthRepository
 import com.example.loanova_android.data.repository.UserProfileRepositoryImpl
 import com.example.loanova_android.domain.repository.IBranchRepository
 import com.example.loanova_android.domain.repository.ILoanApplicationRepository
+import com.example.loanova_android.domain.repository.INotificationRepository
 import com.example.loanova_android.domain.repository.IUserProfileRepository
 import com.example.loanova_android.domain.repository.IPlafondRepository
 import dagger.Binds
@@ -55,5 +57,11 @@ abstract class RepositoryModule {
     abstract fun bindLoanApplicationRepository(
         loanApplicationRepository: LoanApplicationRepository
     ): ILoanApplicationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNotificationRepository(
+        notificationRepositoryImpl: NotificationRepositoryImpl
+    ): INotificationRepository
 }
 

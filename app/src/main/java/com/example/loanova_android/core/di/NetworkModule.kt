@@ -7,6 +7,7 @@ import com.chuckerteam.chucker.api.RetentionManager
 import com.example.loanova_android.data.remote.api.AuthApi
 import com.example.loanova_android.data.remote.api.BranchApi
 import com.example.loanova_android.data.remote.api.LoanApplicationApi
+import com.example.loanova_android.data.remote.api.NotificationApi
 import com.example.loanova_android.data.remote.api.PlafondApi
 import com.example.loanova_android.data.remote.api.UserProfileApi
 import com.google.gson.Gson
@@ -126,6 +127,12 @@ object NetworkModule {
     @Singleton
     fun provideLoanApplicationApi(retrofit: Retrofit): LoanApplicationApi {
         return retrofit.create(LoanApplicationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationApi(retrofit: Retrofit): NotificationApi {
+        return retrofit.create(NotificationApi::class.java)
     }
 
     @Provides

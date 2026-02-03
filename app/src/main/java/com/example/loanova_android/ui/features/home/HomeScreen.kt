@@ -60,6 +60,7 @@ import com.example.loanova_android.data.model.dto.UserProfileResponse
 import com.example.loanova_android.ui.theme.*
 import com.example.loanova_android.ui.features.profile.ProfileScreen
 import com.example.loanova_android.ui.features.loan.myloans.MyLoansScreen
+import com.example.loanova_android.ui.features.notification.NotificationScreen
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
@@ -151,6 +152,13 @@ fun HomeScreen(
                     onNavigateBack = null,
                     onNavigateToDetail = null, // Can be implemented later for loan detail
                     showBackButton = false
+                )
+            }
+
+            2 -> Box(modifier = Modifier.padding(padding)) {
+                NotificationScreen(
+                    showBackButton = false,
+                    onNavigateBack = null
                 )
             }
 
