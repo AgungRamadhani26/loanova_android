@@ -4,7 +4,7 @@ import android.util.Log
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.local.dao.NotificationDao
 import com.example.loanova_android.data.mapper.NotificationMapper
-import com.example.loanova_android.data.remote.api.NotificationApi
+import com.example.loanova_android.data.remote.datasource.NotificationRemoteDataSource
 import com.example.loanova_android.domain.model.Notification
 import com.example.loanova_android.domain.repository.INotificationRepository
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +33,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class NotificationRepositoryImpl @Inject constructor(
-    private val notificationApi: NotificationApi,
+    private val remoteDataSource: NotificationRemoteDataSource,
     private val notificationDao: NotificationDao
 ) : INotificationRepository {
     
@@ -65,7 +65,7 @@ class NotificationRepositoryImpl @Inject constructor(
         
         // Step 2: Fetch from server
         try {
-            val response = notificationApi.getMyNotifications()
+            val response = remoteDataSource.getMyNotifications()
             
             if (response.isSuccessful) {
                 val apiResponse = response.body()
@@ -147,7 +147,7 @@ class NotificationRepositoryImpl @Inject constructor(
             Log.d(TAG, "Marked notification $notificationId as read locally")
             
             // Step 2: Sync with server
-            val response = notificationApi.markAsRead(notificationId)
+            val response = remoteDataSource.markAsRead(notificationId)
             
             if (response.isSuccessful) {
                 val apiResponse = response.body()
@@ -179,7 +179,7 @@ class NotificationRepositoryImpl @Inject constructor(
             Log.d(TAG, "Marked all notifications as read locally")
             
             // Step 2: Sync with server
-            val response = notificationApi.markAllAsRead()
+            val response = remoteDataSource.markAllAsRead()
             
             if (response.isSuccessful) {
                 val apiResponse = response.body()

@@ -13,7 +13,7 @@ import com.example.loanova_android.data.mapper.DataMappers
 import com.example.loanova_android.data.model.dto.ApplicationHistoryResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationResponse
 import com.example.loanova_android.data.model.dto.LoanApplicationRequest
-import com.example.loanova_android.data.remote.api.LoanApplicationApi
+import com.example.loanova_android.data.remote.datasource.LoanRemoteDataSource
 import com.example.loanova_android.data.worker.LoanApplicationWorker
 import com.example.loanova_android.domain.repository.ILoanApplicationRepository
 import com.google.gson.Gson
@@ -47,7 +47,7 @@ import javax.inject.Inject
  * 4. Worker akan sync otomatis saat online
  */
 class LoanApplicationRepository @Inject constructor(
-    private val loanApplicationApi: LoanApplicationApi,
+    private val remoteDataSource: LoanRemoteDataSource,
     private val loanApplicationDao: LoanApplicationDao,
     private val applicationHistoryDao: ApplicationHistoryDao,
     private val workManager: WorkManager,
@@ -86,7 +86,7 @@ class LoanApplicationRepository @Inject constructor(
                 }
                 .build()
             
-            val response = loanApplicationApi.submitLoanApplication(requestBody)
+            val response = remoteDataSource.submitLoanApplication(requestBody)
             
             if (response.isSuccessful) {
                 val body = response.body()
@@ -201,7 +201,7 @@ class LoanApplicationRepository @Inject constructor(
         
         // 2. Network Sync
         try {
-            val response = loanApplicationApi.getMyApplications()
+            val response = remoteDataSource.getMyApplications()
             
             if (response.isSuccessful) {
                 val body = response.body()
@@ -277,7 +277,7 @@ class LoanApplicationRepository @Inject constructor(
         
         // 2. Network Sync
         try {
-            val response = loanApplicationApi.getApplicationDetail(id)
+            val response = remoteDataSource.getApplicationDetail(id)
             
             if (response.isSuccessful) {
                 val body = response.body()
@@ -352,7 +352,7 @@ class LoanApplicationRepository @Inject constructor(
         
         // 2. Network Sync
         try {
-            val response = loanApplicationApi.getApplicationHistory(id)
+            val response = remoteDataSource.getApplicationHistory(id)
             
             if (response.isSuccessful) {
                 val body = response.body()

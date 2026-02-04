@@ -13,6 +13,7 @@ import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
 
 import com.example.loanova_android.data.remote.datasource.AuthRemoteDataSource
+import com.example.loanova_android.data.remote.datasource.FirebaseAuthDataSource
 import com.example.loanova_android.domain.model.User
 import com.example.loanova_android.domain.repository.IAuthRepository
 import com.google.gson.Gson
@@ -47,6 +48,7 @@ import javax.inject.Inject
  */
 class AuthRepositoryImpl @Inject constructor(
     private val remoteDataSource: AuthRemoteDataSource, // Abstraksi untuk network call
+    private val firebaseAuthDataSource: FirebaseAuthDataSource, // Firebase Authentication
     private val gson: Gson, // Untuk deserialize error body
     private val tokenManager: com.example.loanova_android.data.local.TokenManager, // Session Manager
     private val userDao: com.example.loanova_android.data.local.dao.UserDao // To clear data on logout
@@ -192,6 +194,70 @@ class AuthRepositoryImpl @Inject constructor(
                 )
             } else {
                 // Use centralized error parsing
+                emit(parseError(response))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Google Sign-In failed"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Complete Google Sign-In flow:
+     * 1. Sign in with Firebase using Google ID Token
+     * 2. Get Firebase ID Token
+     * 3. Send Firebase ID Token to backend for authentication
+     * 
+     * This moves Firebase Auth logic from UI layer to Data layer (Clean Architecture)
+     */
+    override fun signInWithGoogle(googleIdToken: String): Flow<Resource<User>> = flow {
+        emit(Resource.Loading())
+        try {
+            // Step 1: Sign in with Firebase using Google credential
+            val firebaseAuthResult = firebaseAuthDataSource.signInWithGoogle(googleIdToken)
+            
+            if (firebaseAuthResult.isFailure) {
+                emit(Resource.Error(firebaseAuthResult.exceptionOrNull()?.message ?: "Firebase sign-in failed"))
+                return@flow
+            }
+            
+            // Step 2: Get Firebase ID Token
+            val firebaseIdTokenResult = firebaseAuthDataSource.getFirebaseIdToken()
+            
+            if (firebaseIdTokenResult.isFailure || firebaseIdTokenResult.getOrNull() == null) {
+                emit(Resource.Error("Failed to get Firebase ID token"))
+                return@flow
+            }
+            
+            val firebaseIdToken = firebaseIdTokenResult.getOrNull()!!
+            
+            // Step 3: Send Firebase ID Token to backend
+            val request = FirebaseGoogleLoginRequest(firebaseIdToken, null)
+            val response = remoteDataSource.loginWithFirebaseGoogle(request)
+            val body = response.body()
+
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                // Save session
+                if (body.data.accessToken != null) {
+                    tokenManager.saveSession(
+                        body.data.accessToken,
+                        body.data.refreshToken ?: "",
+                        body.data.username ?: "Google User"
+                    )
+                }
+
+                emit(
+                    Resource.Success(
+                        User(
+                            username = body.data.username ?: "Google User",
+                            roles = body.data.roles ?: emptyList(),
+                            permissions = body.data.permissions ?: emptyList(),
+                            accessToken = body.data.accessToken ?: "",
+                            refreshToken = body.data.refreshToken ?: "",
+                            fcmToken = null
+                        )
+                    )
+                )
+            } else {
                 emit(parseError(response))
             }
         } catch (e: Exception) {

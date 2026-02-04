@@ -3,7 +3,7 @@ package com.example.loanova_android.data.repository
 import com.example.loanova_android.data.local.dao.UserPlafondDao
 import com.example.loanova_android.data.mapper.DataMappers
 import com.example.loanova_android.data.model.dto.UserPlafondResponse
-import com.example.loanova_android.data.remote.api.UserPlafondApi
+import com.example.loanova_android.data.remote.datasource.UserPlafondRemoteDataSource
 import com.example.loanova_android.domain.repository.IUserProfileRepository
 import com.example.loanova_android.domain.repository.IUserPlafondRepository
 import com.example.loanova_android.core.common.Resource
@@ -24,7 +24,7 @@ import javax.inject.Inject
  * 3. Update cache dan emit data terbaru
  */
 class UserPlafondRepositoryImpl @Inject constructor(
-    private val api: UserPlafondApi,
+    private val remoteDataSource: UserPlafondRemoteDataSource,
     private val userProfileRepository: IUserProfileRepository,
     private val userPlafondDao: UserPlafondDao
 ) : IUserPlafondRepository {
@@ -52,7 +52,7 @@ class UserPlafondRepositoryImpl @Inject constructor(
             
             // 3. Try Network Sync
             val networkResult = try {
-                val response = api.getActiveUserPlafond(userId)
+                val response = remoteDataSource.getActiveUserPlafond(userId)
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     if (body.success && body.data != null) {

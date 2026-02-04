@@ -4,7 +4,7 @@ import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.local.dao.BranchDao
 import com.example.loanova_android.data.mapper.DataMappers
 import com.example.loanova_android.data.model.dto.BranchResponse
-import com.example.loanova_android.data.remote.api.BranchApi
+import com.example.loanova_android.data.remote.datasource.BranchRemoteDataSource
 import com.example.loanova_android.domain.repository.IBranchRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,7 @@ import javax.inject.Inject
  * 3. Update cache dan emit dari cache (single source of truth)
  */
 class BranchRepository @Inject constructor(
-    private val branchApi: BranchApi,
+    private val remoteDataSource: BranchRemoteDataSource,
     private val branchDao: BranchDao
 ) : IBranchRepository {
     
@@ -48,7 +48,7 @@ class BranchRepository @Inject constructor(
         
         // 2. Network Sync
         try {
-            val response = branchApi.getAllBranches()
+            val response = remoteDataSource.getAllBranches()
             
             if (response.isSuccessful) {
                 val body = response.body()

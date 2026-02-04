@@ -54,10 +54,7 @@ import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.Loanova_androidTheme
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 // Modern color palette for auth screens
 private val AuthPrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
@@ -117,6 +114,7 @@ fun LoginScreen(
     }
     
     // Google Sign-In handler
+    // CLEAN ARCHITECTURE: UI hanya handle Credential Manager, Firebase logic di DataSource
     val onGoogleSignInClick: () -> Unit = {
         coroutineScope.launch {
             isGoogleLoading = true
@@ -147,26 +145,11 @@ fun LoginScreen(
                 val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                 val googleIdToken = googleIdTokenCredential.idToken
                 
-                android.util.Log.d("LoginScreen", "Google ID Token received")
+                android.util.Log.d("LoginScreen", "Google ID Token received, passing to ViewModel")
                 
-                // Sign in to Firebase with Google credential
-                val firebaseCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-                val authResult = FirebaseAuth.getInstance().signInWithCredential(firebaseCredential).await()
-                
-                // Get Firebase ID Token
-                val firebaseUser = authResult.user
-                if (firebaseUser != null) {
-                    val firebaseIdToken = firebaseUser.getIdToken(true).await().token
-                    if (firebaseIdToken != null) {
-                        android.util.Log.d("LoginScreen", "Firebase ID Token received, sending to backend")
-                        // Send Firebase ID Token to backend
-                        viewModel.loginWithGoogle(firebaseIdToken)
-                    } else {
-                        googleError = "Gagal mendapatkan Firebase token"
-                    }
-                } else {
-                    googleError = "Gagal login ke Firebase"
-                }
+                // CLEAN ARCHITECTURE: Hanya kirim Google ID Token ke ViewModel
+                // Firebase sign-in dan token exchange dilakukan di Data Layer (Repository/DataSource)
+                viewModel.signInWithGoogle(googleIdToken)
                 
             } catch (e: GetCredentialCancellationException) {
                 // User cancelled the sign-in

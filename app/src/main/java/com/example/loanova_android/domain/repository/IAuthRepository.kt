@@ -71,4 +71,19 @@ interface IAuthRepository {
      * @return Flow<Resource<User>> - Domain model User jika sukses
      */
     fun loginWithFirebaseGoogle(idToken: String, fcmToken: String? = null): Flow<Resource<User>>
+    
+    /**
+     * Complete Google Sign-In flow.
+     * 
+     * Flow:
+     * 1. Menerima Google ID Token dari Credential Manager
+     * 2. Sign in ke Firebase Authentication
+     * 3. Get Firebase ID Token
+     * 4. Kirim ke backend untuk verifikasi
+     * 5. Return JWT tokens
+     * 
+     * @param googleIdToken Google ID Token dari Credential Manager
+     * @return Flow<Resource<User>> - Domain model User jika sukses
+     */
+    fun signInWithGoogle(googleIdToken: String): Flow<Resource<User>>
 }

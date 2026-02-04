@@ -2,7 +2,7 @@ package com.example.loanova_android.data.repository
 
 import com.example.loanova_android.core.common.Resource
 import com.example.loanova_android.data.model.dto.UserProfileResponse
-import com.example.loanova_android.data.remote.api.UserProfileApi
+import com.example.loanova_android.data.remote.datasource.UserProfileRemoteDataSource
 import com.example.loanova_android.domain.repository.IUserProfileRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.firstOrNull
  * 2. Write (Complete Profile): Upload API -> Jika Sukses, Simpan ke Cache.
  */
 class UserProfileRepositoryImpl @Inject constructor(
-    private val api: UserProfileApi,
+    private val remoteDataSource: UserProfileRemoteDataSource,
     private val localDataSource: UserDao,
     private val gson: Gson,
     private val workManager: androidx.work.WorkManager,
@@ -73,7 +73,7 @@ class UserProfileRepositoryImpl @Inject constructor(
 
         // 2. Network Sync
         val networkResult = try {
-            val response = api.getMyProfile()
+            val response = remoteDataSource.getMyProfile()
             val body = response.body()
             
             if (response.isSuccessful && body != null && body.success && body.data != null) {
@@ -121,7 +121,7 @@ class UserProfileRepositoryImpl @Inject constructor(
         emit(Resource.Loading())
         try {
             val requestBody = buildMultipartBody(request)
-            val response = api.completeProfile(requestBody)
+            val response = remoteDataSource.completeProfile(requestBody)
             
             val body = response.body()
             if (response.isSuccessful && body != null && body.success && body.data != null) {
@@ -144,7 +144,7 @@ class UserProfileRepositoryImpl @Inject constructor(
         emit(Resource.Loading())
         try {
             val requestBody = buildMultipartBody(request)
-            val response = api.updateProfile(requestBody)
+            val response = remoteDataSource.updateProfile(requestBody)
             
             val body = response.body()
             if (response.isSuccessful && body != null && body.success && body.data != null) {
