@@ -57,4 +57,18 @@ interface IAuthRepository {
     fun logout(): Flow<Resource<Boolean>>
     fun register(username: String, email: String, password: String): Flow<Resource<Boolean>>
     fun changePassword(request: ChangePasswordRequest): Flow<Resource<String>>
+    
+    /**
+     * Login dengan Firebase Google Sign-In.
+     * 
+     * CONTRACT:
+     * - Implementasi WAJIB kirim Firebase ID Token ke backend
+     * - Backend akan verifikasi token dan create/link user
+     * - Return JWT tokens seperti login biasa
+     * 
+     * @param idToken Firebase ID Token dari Google Sign-In
+     * @param fcmToken FCM Token untuk push notification (optional)
+     * @return Flow<Resource<User>> - Domain model User jika sukses
+     */
+    fun loginWithFirebaseGoogle(idToken: String, fcmToken: String? = null): Flow<Resource<User>>
 }

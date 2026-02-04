@@ -73,6 +73,13 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.analytics)
+    implementation("com.google.firebase:firebase-auth-ktx") // Firebase Auth for Google Sign-In
+
+    // Google Sign-In / Credential Manager
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     //Navigation
     implementation("androidx.navigation:navigation-compose:2.7.6")

@@ -14,6 +14,7 @@ import com.example.loanova_android.data.model.dto.RefreshTokenRequest
 import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.ChangePasswordRequest
+import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
 import com.example.loanova_android.data.remote.api.AuthApi
 import retrofit2.Response
 import javax.inject.Inject
@@ -96,5 +97,15 @@ class AuthRemoteDataSource @Inject constructor(
 
     suspend fun changePassword(request: ChangePasswordRequest): Response<ApiResponse<Void>> {
         return authApi.changePassword(request)
+    }
+
+    /**
+     * Login dengan Firebase Google Sign-In.
+     * 
+     * @param request FirebaseGoogleLoginRequest berisi idToken dan fcmToken
+     * @return Response dengan JWT tokens dari backend
+     */
+    suspend fun loginWithFirebaseGoogle(request: FirebaseGoogleLoginRequest): Response<ApiResponse<LoginResponse>> {
+        return authApi.loginWithFirebaseGoogle(request)
     }
 }

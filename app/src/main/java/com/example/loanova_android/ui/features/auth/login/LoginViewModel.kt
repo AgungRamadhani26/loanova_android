@@ -8,6 +8,7 @@ package com.example.loanova_android.ui.features.auth.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.loanova_android.domain.usecase.auth.LoginUseCase
+import com.example.loanova_android.domain.usecase.auth.LoginWithGoogleUseCase
 import com.example.loanova_android.core.common.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase, // Dependency dari Domain Layer
+    private val loginWithGoogleUseCase: LoginWithGoogleUseCase, // Google Sign-In UseCase
     private val gson: com.google.gson.Gson
 ) : ViewModel() {
 
@@ -166,5 +168,52 @@ class LoginViewModel @Inject constructor(
      */
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    // ========================================================================
+    // GOOGLE SIGN-IN FUNCTION
+    // ========================================================================
+
+    /**
+     * Fungsi untuk proses login dengan Google Sign-In.
+     * 
+     * FLOW:
+     * 1. UI memanggil fungsi ini dengan Firebase ID Token
+     * 2. Ambil FCM Token untuk push notification
+     * 3. Kirim ID Token ke backend via LoginWithGoogleUseCase
+     * 4. Backend verifikasi dan return JWT tokens
+     * 5. Update UI state sesuai hasil
+     * 
+     * @param idToken Firebase ID Token dari Google Sign-In
+     */
+    fun loginWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            // Get FCM Token
+            var fcmToken: String? = null
+            try {
+                fcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+                android.util.Log.d("LoginViewModel", "FCM Token for Google Login: $fcmToken")
+            } catch (e: Exception) {
+                android.util.Log.e("LoginViewModel", "Failed to fetch FCM token for Google login", e)
+            }
+
+            // Call backend with Firebase ID Token
+            loginWithGoogleUseCase.execute(idToken, fcmToken).collect { resource ->
+                when (resource) {
+                    is Resource.Loading -> {
+                        _uiState.update { it.copy(isLoading = true, error = null) }
+                    }
+                    is Resource.Success -> {
+                        _uiState.update { it.copy(isLoading = false, success = resource.data) }
+                    }
+                    is Resource.Error -> {
+                        val msg = resource.message ?: "Google Sign-In gagal"
+                        _uiState.update { it.copy(isLoading = false, error = msg, fieldErrors = null) }
+                    }
+                }
+            }
+        }
     }
 }

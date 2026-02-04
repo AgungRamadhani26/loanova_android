@@ -13,6 +13,7 @@ import com.example.loanova_android.data.model.dto.RefreshTokenRequest
 import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.ChangePasswordRequest
+import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -104,4 +105,22 @@ interface AuthApi {
     suspend fun changePassword(
         @Body request: ChangePasswordRequest
     ): Response<ApiResponse<Void>>
+
+    /**
+     * Endpoint untuk Firebase Google Sign-In.
+     * 
+     * METHOD: POST /api/auth/firebase-google
+     * BODY: { "idToken": "...", "fcmToken": "..." }
+     * 
+     * FLOW:
+     * 1. Android Sign-In dengan Google via Firebase Auth
+     * 2. Dapatkan Firebase ID Token
+     * 3. Kirim ID Token ke backend
+     * 4. Backend verifikasi dengan Firebase Admin SDK
+     * 5. Backend create/link user & return JWT tokens
+     */
+    @POST("api/auth/firebase-google")
+    suspend fun loginWithFirebaseGoogle(
+        @Body request: FirebaseGoogleLoginRequest
+    ): Response<ApiResponse<LoginResponse>>
 }

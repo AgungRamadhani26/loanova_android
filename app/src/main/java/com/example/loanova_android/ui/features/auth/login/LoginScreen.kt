@@ -6,6 +6,7 @@ package com.example.loanova_android.ui.features.auth.login
 // RESPONSIBILITY: Login screen UI dengan Smart/Dumb composable pattern
 // ============================================================================
 
+import android.app.Activity
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -30,6 +31,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -41,12 +43,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.loanova_android.R
 import com.example.loanova_android.ui.theme.LoanovaBlue
 import com.example.loanova_android.ui.theme.LoanovaLightBlue
 import com.example.loanova_android.ui.theme.LoanovaBackground
 import com.example.loanova_android.ui.theme.Loanova_androidTheme
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // Modern color palette for auth screens
 private val AuthPrimaryColor = Color(0xFF1E3A5F)      // Deep Navy Blue
@@ -86,6 +97,12 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    
+    // State for Google Sign-In loading
+    var isGoogleLoading by remember { mutableStateOf(false) }
+    var googleError by remember { mutableStateOf<String?>(null) }
 
     // ========================================================================
     // SIDE-EFFECT: Navigation setelah login sukses
@@ -98,12 +115,80 @@ fun LoginScreen(
             onLoginSuccess()
         }
     }
+    
+    // Google Sign-In handler
+    val onGoogleSignInClick: () -> Unit = {
+        coroutineScope.launch {
+            isGoogleLoading = true
+            googleError = null
+            
+            try {
+                // Build Credential Manager request
+                val credentialManager = CredentialManager.create(context)
+                
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setServerClientId("42854164323-oa1i5pc9t5gnel1nqr7g5i50inntnqn5.apps.googleusercontent.com")
+                    .setFilterByAuthorizedAccounts(false) // Allow user to select any account
+                    .setAutoSelectEnabled(false) // Don't auto-select, let user choose
+                    .build()
+                
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+                
+                // Show Google Sign-In bottom sheet
+                val result = credentialManager.getCredential(
+                    context = context as Activity,
+                    request = request
+                )
+                
+                // Extract Google ID Token credential
+                val credential = result.credential
+                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                val googleIdToken = googleIdTokenCredential.idToken
+                
+                android.util.Log.d("LoginScreen", "Google ID Token received")
+                
+                // Sign in to Firebase with Google credential
+                val firebaseCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
+                val authResult = FirebaseAuth.getInstance().signInWithCredential(firebaseCredential).await()
+                
+                // Get Firebase ID Token
+                val firebaseUser = authResult.user
+                if (firebaseUser != null) {
+                    val firebaseIdToken = firebaseUser.getIdToken(true).await().token
+                    if (firebaseIdToken != null) {
+                        android.util.Log.d("LoginScreen", "Firebase ID Token received, sending to backend")
+                        // Send Firebase ID Token to backend
+                        viewModel.loginWithGoogle(firebaseIdToken)
+                    } else {
+                        googleError = "Gagal mendapatkan Firebase token"
+                    }
+                } else {
+                    googleError = "Gagal login ke Firebase"
+                }
+                
+            } catch (e: GetCredentialCancellationException) {
+                // User cancelled the sign-in
+                android.util.Log.d("LoginScreen", "Google Sign-In cancelled by user")
+                googleError = null // Don't show error for cancellation
+            } catch (e: Exception) {
+                android.util.Log.e("LoginScreen", "Google Sign-In failed", e)
+                googleError = e.message ?: "Google Sign-In gagal"
+            } finally {
+                isGoogleLoading = false
+            }
+        }
+    }
 
     LoginScreenContent(
         uiState = uiState,
         onLoginClick = viewModel::login,
         onClearError = viewModel::clearError,
-        onRegisterClick = onNavigateToRegister
+        onRegisterClick = onNavigateToRegister,
+        onGoogleSignInClick = onGoogleSignInClick,
+        isGoogleLoading = isGoogleLoading,
+        googleError = googleError
     )
 }
 
@@ -112,7 +197,10 @@ fun LoginScreenContent(
     uiState: LoginUiState,
     onLoginClick: (String, String) -> Unit,
     onClearError: () -> Unit,
-    onRegisterClick: () -> Unit
+    onRegisterClick: () -> Unit,
+    onGoogleSignInClick: () -> Unit = {},
+    isGoogleLoading: Boolean = false,
+    googleError: String? = null
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -371,7 +459,7 @@ fun LoginScreenContent(
                         containerColor = AuthPrimaryColor,
                         disabledContainerColor = AuthPrimaryColor.copy(alpha = 0.5f)
                     ),
-                    enabled = !uiState.isLoading
+                    enabled = !uiState.isLoading && !isGoogleLoading
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
@@ -386,6 +474,112 @@ fun LoginScreenContent(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Divider with "atau"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = Color.LightGray
+                    )
+                    Text(
+                        text = "atau",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = Color.LightGray
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Google Sign-In Error
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = googleError != null,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+                ) {
+                    Surface(
+                        color = Color(0xFFFDE8E8),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = googleError ?: "",
+                                color = Color(0xFFEF4444),
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                // Google Sign-In Button
+                OutlinedButton(
+                    onClick = onGoogleSignInClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color.LightGray
+                    ),
+                    enabled = !uiState.isLoading && !isGoogleLoading
+                ) {
+                    if (isGoogleLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = AuthSecondaryColor,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            // Google Logo
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_google),
+                                contentDescription = "Google Logo",
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Masuk dengan Google",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.DarkGray
+                            )
+                        }
                     }
                 }
 

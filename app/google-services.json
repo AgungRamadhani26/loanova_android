@@ -12,7 +12,20 @@
           "package_name": "com.example.loanova_android"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "42854164323-9l2blpp7k3l4voq9d7tnul3fju6mjadu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.loanova_android",
+            "certificate_hash": "9d12a102a7440cd91d093cc831b62efd388ba3f1"
+          }
+        },
+        {
+          "client_id": "42854164323-oa1i5pc9t5gnel1nqr7g5i50inntnqn5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCnOP0mJy_jFPE6dbDsvjl7OcBDV_qvwP4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "42854164323-oa1i5pc9t5gnel1nqr7g5i50inntnqn5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

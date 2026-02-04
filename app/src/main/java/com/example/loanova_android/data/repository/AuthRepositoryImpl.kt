@@ -10,6 +10,7 @@ import com.example.loanova_android.data.model.dto.LoginRequest
 import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
+import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
 
 import com.example.loanova_android.data.remote.datasource.AuthRemoteDataSource
 import com.example.loanova_android.domain.model.User
@@ -157,6 +158,44 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Terjadi kesalahan jaringan"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    override fun loginWithFirebaseGoogle(idToken: String, fcmToken: String?): Flow<Resource<User>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = FirebaseGoogleLoginRequest(idToken, fcmToken)
+            val response = remoteDataSource.loginWithFirebaseGoogle(request)
+            val body = response.body()
+
+            if (response.isSuccessful && body?.success == true && body.data != null) {
+                // Save session - sama seperti login biasa
+                if (body.data.accessToken != null) {
+                    tokenManager.saveSession(
+                        body.data.accessToken,
+                        body.data.refreshToken ?: "",
+                        body.data.username ?: "Google User"
+                    )
+                }
+
+                emit(
+                    Resource.Success(
+                        User(
+                            username = body.data.username ?: "Google User",
+                            roles = body.data.roles ?: emptyList(),
+                            permissions = body.data.permissions ?: emptyList(),
+                            accessToken = body.data.accessToken ?: "",
+                            refreshToken = body.data.refreshToken ?: "",
+                            fcmToken = fcmToken
+                        )
+                    )
+                )
+            } else {
+                // Use centralized error parsing
+                emit(parseError(response))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Google Sign-In failed"))
         }
     }.flowOn(Dispatchers.IO)
 }
