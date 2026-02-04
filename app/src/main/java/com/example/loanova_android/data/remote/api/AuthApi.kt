@@ -14,6 +14,8 @@ import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
+import com.example.loanova_android.data.model.dto.ForgotPasswordRequest
+import com.example.loanova_android.data.model.dto.ResetPasswordRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
@@ -123,4 +125,36 @@ interface AuthApi {
     suspend fun loginWithFirebaseGoogle(
         @Body request: FirebaseGoogleLoginRequest
     ): Response<ApiResponse<LoginResponse>>
+
+    /**
+     * Endpoint untuk Forgot Password (Lupa Kata Sandi).
+     * 
+     * METHOD: POST /api/auth/forgot-password
+     * BODY: { "email": "user@example.com" }
+     * 
+     * FLOW:
+     * 1. User memasukkan email
+     * 2. Backend generate reset token dan kirim ke email
+     * 3. Response sukses (tidak ada data, hanya message)
+     */
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(
+        @Body request: ForgotPasswordRequest
+    ): Response<ApiResponse<Void>>
+
+    /**
+     * Endpoint untuk Reset Password.
+     * 
+     * METHOD: POST /api/auth/reset-password
+     * BODY: { "token": "uuid-token", "newPassword": "NewPass123!" }
+     * 
+     * FLOW:
+     * 1. User mendapat token dari email (via deep link)
+     * 2. User memasukkan password baru
+     * 3. Backend validasi token dan update password
+     */
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(
+        @Body request: ResetPasswordRequest
+    ): Response<ApiResponse<Void>>
 }

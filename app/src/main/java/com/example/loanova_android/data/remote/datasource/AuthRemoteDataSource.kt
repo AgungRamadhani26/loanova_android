@@ -15,6 +15,8 @@ import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
+import com.example.loanova_android.data.model.dto.ForgotPasswordRequest
+import com.example.loanova_android.data.model.dto.ResetPasswordRequest
 import com.example.loanova_android.data.remote.api.AuthApi
 import retrofit2.Response
 import javax.inject.Inject
@@ -107,5 +109,25 @@ class AuthRemoteDataSource @Inject constructor(
      */
     suspend fun loginWithFirebaseGoogle(request: FirebaseGoogleLoginRequest): Response<ApiResponse<LoginResponse>> {
         return authApi.loginWithFirebaseGoogle(request)
+    }
+
+    /**
+     * Request forgot password - kirim email reset link.
+     * 
+     * @param request ForgotPasswordRequest berisi email
+     * @return Response sukses/gagal
+     */
+    suspend fun forgotPassword(request: ForgotPasswordRequest): Response<ApiResponse<Void>> {
+        return authApi.forgotPassword(request)
+    }
+
+    /**
+     * Reset password dengan token dari email.
+     * 
+     * @param request ResetPasswordRequest berisi token dan newPassword
+     * @return Response sukses/gagal
+     */
+    suspend fun resetPassword(request: ResetPasswordRequest): Response<ApiResponse<Void>> {
+        return authApi.resetPassword(request)
     }
 }

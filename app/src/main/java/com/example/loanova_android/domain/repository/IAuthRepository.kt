@@ -86,4 +86,21 @@ interface IAuthRepository {
      * @return Flow<Resource<User>> - Domain model User jika sukses
      */
     fun signInWithGoogle(googleIdToken: String): Flow<Resource<User>>
+
+    /**
+     * Request forgot password - mengirim link reset password ke email.
+     * 
+     * @param email Email user yang terdaftar
+     * @return Flow<Resource<String>> - Message sukses
+     */
+    fun forgotPassword(email: String): Flow<Resource<String>>
+
+    /**
+     * Reset password dengan token dari email.
+     * 
+     * @param token Token dari email reset password
+     * @param newPassword Password baru
+     * @return Flow<Resource<String>> - Message sukses
+     */
+    fun resetPassword(token: String, newPassword: String): Flow<Resource<String>>
 }

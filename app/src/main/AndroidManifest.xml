@@ -54,6 +54,34 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- Deep Link for Reset Password -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- Custom scheme: loanova://reset-password?token=xxx -->
+                <data android:scheme="loanova" android:host="reset-password" />
+            </intent-filter>
+            
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- HTTP scheme for backend URL: http://localhost:9091/reset-password?token=xxx -->
+                <data android:scheme="http" android:host="localhost" android:port="9091" android:pathPrefix="/reset-password" />
+            </intent-filter>
+            
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- HTTPS scheme for production: https://loanova.app/reset-password?token=xxx -->
+                <data android:scheme="https" android:host="loanova.app" android:pathPrefix="/reset-password" />
+            </intent-filter>
         </activity>
 
         <service

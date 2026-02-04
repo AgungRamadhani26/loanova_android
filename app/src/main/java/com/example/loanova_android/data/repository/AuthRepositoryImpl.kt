@@ -11,6 +11,8 @@ import com.example.loanova_android.data.model.dto.ChangePasswordRequest
 import com.example.loanova_android.data.model.dto.RegisterRequest
 import com.example.loanova_android.data.model.dto.RegisterResponse
 import com.example.loanova_android.data.model.dto.FirebaseGoogleLoginRequest
+import com.example.loanova_android.data.model.dto.ForgotPasswordRequest
+import com.example.loanova_android.data.model.dto.ResetPasswordRequest
 
 import com.example.loanova_android.data.remote.datasource.AuthRemoteDataSource
 import com.example.loanova_android.data.remote.datasource.FirebaseAuthDataSource
@@ -262,6 +264,56 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Google Sign-In failed"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Request forgot password - mengirim link reset password ke email.
+     */
+    override fun forgotPassword(email: String): Flow<Resource<String>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = ForgotPasswordRequest(email)
+            val response = remoteDataSource.forgotPassword(request)
+            
+            if (response.isSuccessful) {
+                val message = response.body()?.message ?: "Link reset password telah dikirim ke email Anda"
+                emit(Resource.Success(message))
+            } else {
+                val errorResult = parseError<com.example.loanova_android.core.base.ApiResponse<Void>, String>(response)
+                if (errorResult is Resource.Error) {
+                    emit(Resource.Error(errorResult.message ?: "Gagal mengirim email reset password"))
+                } else {
+                    emit(Resource.Error("Gagal mengirim email reset password"))
+                }
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Terjadi kesalahan jaringan"))
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Reset password dengan token dari email.
+     */
+    override fun resetPassword(token: String, newPassword: String): Flow<Resource<String>> = flow {
+        emit(Resource.Loading())
+        try {
+            val request = ResetPasswordRequest(token, newPassword)
+            val response = remoteDataSource.resetPassword(request)
+            
+            if (response.isSuccessful) {
+                val message = response.body()?.message ?: "Password berhasil diubah"
+                emit(Resource.Success(message))
+            } else {
+                val errorResult = parseError<com.example.loanova_android.core.base.ApiResponse<Void>, String>(response)
+                if (errorResult is Resource.Error) {
+                    emit(Resource.Error(errorResult.message ?: "Gagal reset password"))
+                } else {
+                    emit(Resource.Error("Gagal reset password"))
+                }
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Terjadi kesalahan jaringan"))
         }
     }.flowOn(Dispatchers.IO)
 }

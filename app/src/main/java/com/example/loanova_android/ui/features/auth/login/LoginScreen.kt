@@ -91,7 +91,8 @@ private val AuthGradientEnd = Color(0xFF1E40AF)       // Royal Blue
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -169,6 +170,7 @@ fun LoginScreen(
         onLoginClick = viewModel::login,
         onClearError = viewModel::clearError,
         onRegisterClick = onNavigateToRegister,
+        onForgotPasswordClick = onNavigateToForgotPassword,
         onGoogleSignInClick = onGoogleSignInClick,
         isGoogleLoading = isGoogleLoading,
         googleError = googleError
@@ -181,6 +183,7 @@ fun LoginScreenContent(
     onLoginClick: (String, String) -> Unit,
     onClearError: () -> Unit,
     onRegisterClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit = {},
     onGoogleSignInClick: () -> Unit = {},
     isGoogleLoading: Boolean = false,
     googleError: String? = null
@@ -428,7 +431,22 @@ fun LoginScreenContent(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(32.dp))
+                // Forgot Password Link
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    TextButton(onClick = onForgotPasswordClick) {
+                        Text(
+                            text = "Lupa Password?",
+                            color = AuthSecondaryColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Login Button with Gradient
                 Button(

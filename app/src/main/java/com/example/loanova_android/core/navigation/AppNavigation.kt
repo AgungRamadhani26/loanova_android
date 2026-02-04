@@ -12,6 +12,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import com.example.loanova_android.ui.features.auth.login.LoginScreen
 import com.example.loanova_android.ui.features.home.HomeScreen
 
@@ -134,6 +135,56 @@ fun AppNavigation(navController: NavHostController) {
                 },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
+                }
+            )
+        }
+
+        // ====================================================================
+        // FORGOT PASSWORD SCREEN
+        // Route: "forgot_password"
+        // ====================================================================
+        composable(Screen.ForgotPassword.route) {
+            com.example.loanova_android.ui.features.auth.forgotpassword.ForgotPasswordScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ====================================================================
+        // RESET PASSWORD SCREEN
+        // Route: "reset_password?token={token}"
+        // Deep Link: loanova://reset-password?token={token}
+        //            https://loanova.app/reset-password?token={token}
+        // ====================================================================
+        composable(
+            route = "${Screen.ResetPassword.route}?token={token}",
+            arguments = listOf(
+                navArgument("token") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = ""
+                }
+            ),
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "loanova://reset-password?token={token}" },
+                navDeepLink { uriPattern = "https://loanova.app/reset-password?token={token}" },
+                navDeepLink { uriPattern = "http://localhost:9091/reset-password?token={token}" }
+            )
+        ) {
+            com.example.loanova_android.ui.features.auth.resetpassword.ResetPasswordScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true } // Clear all backstack
+                    }
                 }
             )
         }
