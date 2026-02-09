@@ -15,7 +15,7 @@ import org.mockito.kotlin.whenever
 
 /**
  * Unit Test untuk ForgotPasswordUseCase
- * 
+ *
  * Test Cases:
  * 1. execute_withValidEmail_returnsLoadingThenSuccess
  * 2. execute_withInvalidEmail_returnsLoadingThenError
@@ -25,7 +25,7 @@ class ForgotPasswordUseCaseTest {
 
     // Mock dependency
     private lateinit var mockRepository: IAuthRepository
-    
+
     // System Under Test (SUT)
     private lateinit var forgotPasswordUseCase: ForgotPasswordUseCase
 
@@ -33,7 +33,7 @@ class ForgotPasswordUseCaseTest {
     fun setUp() {
         // Initialize mock
         mockRepository = mock()
-        
+
         // Create UseCase with mocked repository
         forgotPasswordUseCase = ForgotPasswordUseCase(mockRepository)
     }
@@ -46,12 +46,12 @@ class ForgotPasswordUseCaseTest {
         // Given: Repository returns success flow
         val testEmail = "test@example.com"
         val successMessage = "Link reset password telah dikirim ke email Anda"
-        
+
         whenever(mockRepository.forgotPassword(testEmail)).thenReturn(
             flow {
                 emit(Resource.Loading())
                 emit(Resource.Success(successMessage))
-            }
+            },
         )
 
         // When: Execute UseCase
@@ -59,12 +59,12 @@ class ForgotPasswordUseCaseTest {
             // Then: First emission should be Loading
             val loadingState = awaitItem()
             assertTrue("First emission should be Loading", loadingState is Resource.Loading)
-            
+
             // Then: Second emission should be Success with correct message
             val successState = awaitItem()
             assertTrue("Second emission should be Success", successState is Resource.Success)
             assertEquals(successMessage, (successState as Resource.Success).data)
-            
+
             // Verify no more emissions
             awaitComplete()
         }
@@ -78,12 +78,12 @@ class ForgotPasswordUseCaseTest {
         // Given: Repository returns error flow
         val testEmail = "notfound@example.com"
         val errorMessage = "User dengan email notfound@example.com tidak ditemukan"
-        
+
         whenever(mockRepository.forgotPassword(testEmail)).thenReturn(
             flow {
                 emit(Resource.Loading())
                 emit(Resource.Error(errorMessage))
-            }
+            },
         )
 
         // When: Execute UseCase
@@ -91,12 +91,12 @@ class ForgotPasswordUseCaseTest {
             // Then: First emission should be Loading
             val loadingState = awaitItem()
             assertTrue("First emission should be Loading", loadingState is Resource.Loading)
-            
+
             // Then: Second emission should be Error with correct message
             val errorState = awaitItem()
             assertTrue("Second emission should be Error", errorState is Resource.Error)
             assertEquals(errorMessage, (errorState as Resource.Error).message)
-            
+
             // Verify no more emissions
             awaitComplete()
         }
@@ -109,12 +109,12 @@ class ForgotPasswordUseCaseTest {
     fun `execute calls repository with correct email`() = runTest {
         // Given
         val testEmail = "verify@example.com"
-        
+
         whenever(mockRepository.forgotPassword(testEmail)).thenReturn(
             flow {
                 emit(Resource.Loading())
                 emit(Resource.Success("Success"))
-            }
+            },
         )
 
         // When: Execute UseCase and collect all emissions

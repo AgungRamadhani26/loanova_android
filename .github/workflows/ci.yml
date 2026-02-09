@@ -1,0 +1,67 @@
+# =============================================================================
+# CI PIPELINE UNTUK LOANOVA ANDROID
+# =============================================================================
+#
+# Workflow ini akan berjalan otomatis setiap kali ada:
+# - Push ke branch main/master
+# - Pull Request ke branch main/master
+#
+# STEPS:
+# 1. Checkout kode dari repository
+# 2. Setup JDK 17
+# 3. Grant Gradlew Permission
+# 4. Spotless Check (Code Formatting)
+# 5. Run Unit Tests
+# 6. Build Debug APK
+# =============================================================================
+
+name: Android CI
+
+# Trigger: Kapan workflow ini dijalankan
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout - Mengambil kode dari repository
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # Step 2: Setup JDK 17 (Required untuk Android Gradle Plugin 8.x)
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle  # Cache Gradle dependencies untuk speed up
+
+    # Step 3: Grant execute permission untuk gradlew
+    - name: Grant Gradlew Permission
+      run: chmod +x ./gradlew
+
+    # Step 4: Spotless Check - Cek format kode (hanya untuk unit test files)
+    - name: Spotless Check
+      run: ./gradlew spotlessCheck
+
+    # Step 5: Run Unit Tests
+    # Hanya menjalankan test case tertentu (ForgotPasswordUseCaseTest)
+    - name: Run Unit Tests
+      run: ./gradlew testDebugUnitTest --tests "com.example.loanova_android.domain.usecase.auth.ForgotPasswordUseCaseTest"
+
+    # Step 6: Build Debug APK
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+
+    # Step 7: Upload APK sebagai artifact (optional - untuk download dari GitHub Actions)
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: app/build/outputs/apk/debug/*.apk
+        retention-days: 7
