@@ -80,6 +80,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        // SECURITY: Mencegah Screen Capture / Recording
+        // Layar akan menjadi hitam jika user mencoba screenshot atau screen record
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        
+        // SECURITY: Root Detection
+        // Cek apakah device di-root. Jika ya, tutup aplikasi demi keamanan.
+        val rootBeer = com.scottyab.rootbeer.RootBeer(this)
+        if (rootBeer.isRooted) {
+            // Tampilkan log atau kirim analitik jika perlu
+            // Tutup aplikasi
+            finishAffinity() 
+            kotlin.system.exitProcess(0)
+        }
+
         askNotificationPermission()
         enableEdgeToEdge()
         

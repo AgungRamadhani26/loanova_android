@@ -73,11 +73,19 @@ object NetworkModule {
         authInterceptor: com.example.loanova_android.data.remote.AuthInterceptor,
         tokenAuthenticator: com.example.loanova_android.data.remote.TokenAuthenticator
     ): OkHttpClient {
+        // SECURITY: SSL Pinning
+        // Memaksa aplikasi hanya percaya pada sertifikat server dengan fingerprint tertentu.
+        // Saat ini dikosongkan (placeholder). Jika sudah production, uncomment dan isi SHA-256 pin.
+        val certificatePinner = okhttp3.CertificatePinner.Builder()
+            // .add("loanova-backend.up.railway.app", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+            .build()
+            
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(chuckerInterceptor)
             .addInterceptor(authInterceptor)
             .authenticator(tokenAuthenticator)
+            .certificatePinner(certificatePinner)
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .build()

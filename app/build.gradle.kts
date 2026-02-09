@@ -28,13 +28,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true // Enable Obfuscation (R8)
+            isShrinkResources = true // Hapus resource yang tidak terpakai
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -134,4 +136,7 @@ dependencies {
 
     // Location Services for GPS
     implementation("com.google.android.gms:play-services-location:21.0.1")
+
+    // Security: Root Detection
+    implementation("com.scottyab:rootbeer-lib:0.1.1")
 }
