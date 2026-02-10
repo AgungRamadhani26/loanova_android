@@ -22,7 +22,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        val baseUrl = project.findProperty("BASE_URL") as String? ?: "http://10.55.44.44:9091/"
+        val baseUrl = project.findProperty("BASE_URL") as String? ?: "http://136.113.170.61/"
         buildConfigField("String", "BASE_URL", "\"$baseUrl\"")
     }
 
