@@ -249,6 +249,7 @@ private fun LoanDetailContent(
             icon = Icons.Outlined.CreditCard
         ) {
             DetailRow(label = "ID Pengajuan", value = "#${loan.id}", valueColor = DetailSecondaryColor)
+            DetailRow(label = "Cabang", value = loan.branchCode)
             DetailRow(label = "Jenis Plafond", value = loan.plafondName)
             DetailRow(label = "Jumlah Pinjaman", value = formatCurrency(loan.amount))
             DetailRow(label = "Tenor", value = "${loan.tenor} Bulan")
