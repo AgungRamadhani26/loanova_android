@@ -6,6 +6,7 @@ import java.io.File
  * Data Transfer Object for Completing User Profile.
  * Maps to backend `UserProfileCompleteRequest`.
  */
+@androidx.annotation.Keep
 data class UserProfileCompleteRequest(
     val fullName: String,
     val phoneNumber: String,
