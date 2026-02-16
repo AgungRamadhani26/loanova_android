@@ -83,9 +83,11 @@ class MainActivity : ComponentActivity() {
         
         // SECURITY: Mencegah Screen Capture / Recording
         // Layar akan menjadi hitam jika user mencoba screenshot atau screen record
+        // SECURITY: Mencegah Screen Capture / Recording
+        // Layar akan menjadi hitam jika user mencoba screenshot atau screen record
         window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE
+           android.view.WindowManager.LayoutParams.FLAG_SECURE,
+           android.view.WindowManager.LayoutParams.FLAG_SECURE
         )
         
         // SECURITY: Root Detection
