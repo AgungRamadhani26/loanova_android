@@ -70,8 +70,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 
-                <!-- HTTP scheme for backend URL: http://136.113.170.61/reset-password?token=xxx -->
-                <data android:scheme="http" android:host="136.113.170.61" android:pathPrefix="/reset-password" />
+                <!-- HTTP scheme for backend URL: http://10.55.44.44:9091/reset-password?token=xxx -->
+                <data android:scheme="http" android:host="10.55.44.44" android:port="9091" android:pathPrefix="/reset-password" />
             </intent-filter>
             
             <intent-filter android:autoVerify="true">
